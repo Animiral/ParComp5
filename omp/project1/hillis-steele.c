@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <alloca.h>
+#include "util/args.h"
 
 #ifndef ATYPE
 #define ATYPE int
@@ -9,20 +10,19 @@
 
 static void benchmark(ATYPE** data, int n, int* ops);
 static void scan(ATYPE** in, int n, int* ops);
-static void print_usage();
 static void print_array(const char* caption, ATYPE a[], int n);
 static void print_perf(int n, int t, int ops);
 
 int main(int argc, char* argv[])
 {
-	if (argc != 3) 
+	int debug_flag;
+	int n;
+	int t;
+
+	if (parse_args(argc, argv, &debug_flag, "input size", &n, "threads", &t, NULL, NULL, NULL, NULL) != 0)
 	{
-		print_usage();
 		exit(1);
 	}
-
-	int n = strtol(argv[1], NULL, 0);
-	int t = strtol(argv[2], NULL, 0);
 
 	if ((n < 1) || (t < 1))
 	{
@@ -40,10 +40,10 @@ int main(int argc, char* argv[])
 		data[i] = (i % 3 == 0);
 	}
 
-	print_array("input", data, n);
+	if (debug_flag) print_array("input", data, n);
 	benchmark(&data, n, &ops);	
 
-	print_array("output", data, n);
+	if (debug_flag) print_array("output", data, n);
 	print_perf(n, t, ops);
 }
 
@@ -94,11 +94,6 @@ void scan(ATYPE** in, int n, int* ops)
 	}
 
 	*in = a;
-}
-
-void print_usage() 
-{
-	fprintf(stderr, "%s\n", "Arguments: <input size> <threads>");
 }
 
 void print_array(const char* caption, ATYPE a[], int n)

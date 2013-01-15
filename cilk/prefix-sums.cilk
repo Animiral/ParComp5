@@ -1,8 +1,135 @@
+#include <cilk-lib.cilkh>
 #include <stdio.h>
+#include <stdlib.h>
+#include <alloca.h>
+#include "util/args.h"
 
-cilk int main()
+#ifndef ATYPE
+#define ATYPE int
+#endif
+
+cilk static void benchmark(ATYPE data[], int n, int chunk);
+cilk static void scan(ATYPE a[], int n, int chunk);
+cilk static void add_up(ATYPE* a, ATYPE* b, int i, int n);
+cilk static void reduce_down(ATYPE* a, ATYPE* b, int i, int n);
+static void print_array(const char* caption, ATYPE a[], int n);
+
+cilk int main(int argc, char* argv[])
 {
-	
+	int debug_flag;
+	int n;
+	int t;
+	int chunk;
+	int i;
+	ATYPE* data;
+
+	if (parse_args(argc, argv, &debug_flag, "input size", &n, "threads", &t, "chunk size", &chunk, NULL, NULL) != 0)
+	{
+		exit(1);
+	}
+
+	data = malloc(n * sizeof(ATYPE));
+
+	if ((n < 1) || (t < 1))
+	{
+		fprintf(stderr, "%s\n", "bad input?");
+		exit(1);
+	}
+
+	for (i = 0; i < n; i++) 
+	{
+		data[i] = (i % 3 == 0);
+	}
+
+	if (debug_flag) print_array("input", data, n);
+	spawn benchmark(data, n, chunk);	
+
+	if (debug_flag) print_array("output", data, n);
+
+	return 0;
 }
 
+cilk static void benchmark(ATYPE data[], int n, int chunk)
+{
+	Cilk_time stime;
+	Cilk_time etime;
+	double seconds;
 
+	stime = Cilk_get_wall_time();
+	spawn scan(data, n, chunk);
+	sync;
+	etime = Cilk_get_wall_time();
+
+	seconds = Cilk_wall_time_to_sec(etime - stime);
+	printf("Time: %f seconds.\n", seconds);
+}
+
+cilk static void scan(ATYPE in[], int length, int chunk)
+{
+	int start;
+	int count;
+	int l_2;
+	ATYPE* out;
+
+	if (length <= 1) return;
+
+	l_2 = length/2;
+	out = alloca(sizeof(ATYPE) * l_2);
+
+	for (start = 0; start < l_2; start += chunk) 
+	{
+		count = chunk;
+		if (start + chunk > l_2) count = l_2-start;
+
+		spawn add_up(in, out, start, count);
+	}
+	sync;
+
+	spawn scan(out, l_2, chunk);
+
+	in[1] = out[0];
+
+	for (start = 1; start < l_2; start += chunk) 
+	{
+		count = chunk;
+		if (start + chunk > l_2) count = l_2-start;
+
+		spawn reduce_down(in, out, start, count);
+	}
+	sync;
+
+	if (length % 2)
+	{
+		in[length-1] = out[l_2-1] + in[length-1];
+	}
+}
+
+cilk static void add_up(ATYPE* a, ATYPE* b, int i, int n)
+{
+	int j;
+	for (j = i; j < i+n; j++) 
+	{
+		b[j] = a[2*j] + a[2*j+1];
+	}
+}
+
+cilk static void reduce_down(ATYPE* a, ATYPE* b, int i, int n)
+{
+	int j;
+	for (j = i; j < i+n; j++) 
+	{
+		a[2*j] = b[j-1] + a[2*j];
+		a[2*j+1] = b[j];
+	}
+}
+
+void print_array(const char* caption, ATYPE a[], int n)
+{
+	int i;
+	printf("%s:\n", caption);
+	for (i = 0; i < n; i++) 
+	{
+		printf("%d,", a[i]);
+	}
+	printf("\n");
+}

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <alloca.h>
+#include "util/args.h"
 
 #ifndef ATYPE
 #define ATYPE int
@@ -11,7 +12,6 @@
 
 static void benchmark(ATYPE matrix[], ATYPE vector[], ATYPE res[], int m, int n);
 static void matmult();
-static void print_usage();
 static void print_matrix(const char* caption, ATYPE mat[], int m, int n);
 static void print_vector(const char* caption, ATYPE vec[], int n);
 static void print_perf(int m, int n, int t);
@@ -19,16 +19,15 @@ static void print_perf(int m, int n, int t);
 int main(int argc, char* argv[])
 {
 	int i;
+	int debug_flag;
+	int m;
+	int n;
+	int t;
 
-	if (argc != 4) 
+	if (parse_args(argc, argv, &debug_flag, "m size", &m, "n size", &n, "threads", &t, NULL, NULL) != 0)
 	{
-		print_usage();
 		exit(1);
 	}
-
-	int m = strtol(argv[1], NULL, 0);
-	int n = strtol(argv[2], NULL, 0);
-	int t = strtol(argv[3], NULL, 0);
 
 	if ((n < 1) || (t < 1))
 	{
@@ -52,11 +51,11 @@ int main(int argc, char* argv[])
 		vec[i] = (i % 3)*3 -4;
 	}
 
-	print_matrix("mat", mat, m, n);
-	print_vector("vec", vec, n);
+	if (debug_flag) print_matrix("mat", mat, m, n);
+	if (debug_flag) print_vector("vec", vec, n);
 	benchmark(mat, vec, res, m, n);
 
-	print_vector("res", res, m);
+	if (debug_flag) print_vector("res", res, m);
 	print_perf(m, n, t);
 }
 
@@ -82,11 +81,6 @@ static void matmult(ATYPE mat[], ATYPE vec[], ATYPE* res, int m, int n)
 			res[i] += mat[MINDEX(i,j)] * vec[j];
 		}
 	}
-}
-
-static void print_usage() 
-{
-	fprintf(stderr, "%s\n", "Arguments: <m size> <n size> <threads>");
 }
 
 static void print_matrix(const char* caption, ATYPE mat[], int m, int n)
