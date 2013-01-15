@@ -73,6 +73,7 @@ static void matmult(ATYPE mat[], ATYPE vec[], ATYPE* res, int m, int n)
 {
 	int i, j;
 
+	#pragma omp parallel for schedule(static,1)
 	for (i = 0; i < m; i++) 
 	{
 		res[i] = 0;
