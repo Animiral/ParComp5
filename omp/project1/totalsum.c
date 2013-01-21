@@ -8,10 +8,15 @@
 #define ATYPE int
 #endif
 
-static void benchmark(ATYPE data[], int n);
+#ifndef SEP
+#define SEP ";"
+#endif
+
+static void benchmark(ATYPE data[], int n, ATYPE* sum, double* dtime);
 static int totalsum(ATYPE a[], int n);
 static void print_array();
-static void print_perf(int n, int t, int ops);
+static void print_perf(int n, int t, double dtime);
+static void print_perf_debug(int n, int t);
 
 int main(int argc, char* argv[])
 {
@@ -40,20 +45,25 @@ int main(int argc, char* argv[])
 	}
 
 	if (debug_flag) print_array("input", data, n);
-	benchmark(data, n);
 
+	ATYPE sum;
+	double dtime;
+	benchmark(data, n, &sum, &dtime);
+
+	if (debug_flag) printf("Total sum: %d\n", sum);
+	if (debug_flag) printf("Time: %f\n", dtime);
 	if (debug_flag) print_array("output", data, n);
-	print_perf(n, t, 0);
+	if (debug_flag) print_perf_debug(n, t);
+	else print_perf(n, t, dtime);
 }
 
-void benchmark(ATYPE data[], int n)
+void benchmark(ATYPE data[], int n, ATYPE* sum, double* dtime)
 {
 	double stime = omp_get_wtime();
-	int tsum = totalsum(data, n);
+	*sum = totalsum(data, n);
 	double etime = omp_get_wtime();
 
-	printf("Total sum: %d\n", tsum);
-	printf("Time: %f\n", etime - stime);
+	*dtime = etime - stime;
 }
 
 int totalsum(ATYPE a[], int n)
@@ -79,9 +89,13 @@ void print_array(const char* caption, ATYPE a[], int n)
 	printf("\n");
 }
 
-static void print_perf(int n, int t, int ops)
+static void print_perf(int n, int t, double dtime)
+{
+	printf("%d%s%d%s%f\n", n, SEP, t, SEP, dtime);
+}
+
+static void print_perf_debug(int n, int t)
 {
 	printf("Input size: %d\n", n);
 	printf("Threads: %d\n", t);
-	printf("Total operations: %d\n", ops);
 }

@@ -8,13 +8,18 @@
 #define ATYPE int
 #endif
 
+#ifndef SEP
+#define SEP ";"
+#endif
+
 #define MINDEX(I,J) ((I)*n+(J))
 
-static void benchmark(ATYPE matrix[], ATYPE vector[], ATYPE res[], int m, int n);
+static void benchmark(ATYPE matrix[], ATYPE vector[], ATYPE res[], int m, int n, double* dtime);
 static void matmult();
 static void print_matrix(const char* caption, ATYPE mat[], int m, int n);
 static void print_vector(const char* caption, ATYPE vec[], int n);
-static void print_perf(int m, int n, int t);
+static void print_perf(int m, int n, int t, double dtime);
+static void print_perf_debug(int m, int n, int t);
 
 int main(int argc, char* argv[])
 {
@@ -53,19 +58,23 @@ int main(int argc, char* argv[])
 
 	if (debug_flag) print_matrix("mat", mat, m, n);
 	if (debug_flag) print_vector("vec", vec, n);
-	benchmark(mat, vec, res, m, n);
 
+	double dtime;
+	benchmark(mat, vec, res, m, n, &dtime);
+
+	if (debug_flag) printf("Time: %f\n", dtime);
 	if (debug_flag) print_vector("res", res, m);
-	print_perf(m, n, t);
+	if (debug_flag) print_perf_debug(m, n, t);
+	else print_perf(m, n, t, dtime);
 }
 
-static void benchmark(ATYPE matrix[], ATYPE vector[], ATYPE res[], int m, int n)
+static void benchmark(ATYPE matrix[], ATYPE vector[], ATYPE res[], int m, int n, double* dtime)
 {
 	double stime = omp_get_wtime();
 	matmult(matrix, vector, res, m, n);
 	double etime = omp_get_wtime();
 
-	printf("Time: %f\n", etime - stime);
+	*dtime = etime - stime;
 }
 
 static void matmult(ATYPE mat[], ATYPE vec[], ATYPE* res, int m, int n)
@@ -110,7 +119,12 @@ static void print_vector(const char* caption, ATYPE vec[], int n)
 	printf("]\n");
 }
 
-static void print_perf(int m, int n, int t)
+static void print_perf(int m, int n, int t, double dtime)
+{
+	printf("%d%s%d%s%d%s%f\n", m, SEP, n, SEP, t, SEP, dtime);
+}
+
+static void print_perf_debug(int m, int n, int t)
 {
 	printf("m size: %d\n", m);
 	printf("n size: %d\n", n);

@@ -8,11 +8,16 @@
 #define ATYPE int
 #endif
 
-cilk static void benchmark(ATYPE data[], int n, int chunk);
+#ifndef SEP
+#define SEP ";"
+#endif
+
+cilk static void benchmark(ATYPE data[], int n, int chunk, double* dtime);
 cilk static void scan(ATYPE a[], int n, int chunk);
 cilk static void add_up(ATYPE* a, ATYPE* b, int i, int n);
 cilk static void reduce_down(ATYPE* a, ATYPE* b, int i, int n);
 static void print_array(const char* caption, ATYPE a[], int n);
+static void print_perf(int n, int t, int chunk, double dtime);
 
 cilk int main(int argc, char* argv[])
 {
@@ -22,6 +27,7 @@ cilk int main(int argc, char* argv[])
 	int chunk;
 	int i;
 	ATYPE* data;
+	double dtime;
 
 	if (parse_args(argc, argv, &debug_flag, "input size", &n, "threads", &t, "chunk size", &chunk, NULL, NULL) != 0)
 	{
@@ -42,26 +48,27 @@ cilk int main(int argc, char* argv[])
 	}
 
 	if (debug_flag) print_array("input", data, n);
-	spawn benchmark(data, n, chunk);	
 
+	spawn benchmark(data, n, chunk, &dtime);
+
+	if (debug_flag) printf("Time: %f seconds.\n", dtime);
 	if (debug_flag) print_array("output", data, n);
+	else print_perf(n, t, chunk, dtime);
 
 	return 0;
 }
 
-cilk static void benchmark(ATYPE data[], int n, int chunk)
+cilk static void benchmark(ATYPE data[], int n, int chunk, double* dtime)
 {
 	Cilk_time stime;
 	Cilk_time etime;
-	double seconds;
 
 	stime = Cilk_get_wall_time();
 	spawn scan(data, n, chunk);
 	sync;
 	etime = Cilk_get_wall_time();
 
-	seconds = Cilk_wall_time_to_sec(etime - stime);
-	printf("Time: %f seconds.\n", seconds);
+	*dtime = Cilk_wall_time_to_sec(etime - stime);
 }
 
 cilk static void scan(ATYPE in[], int length, int chunk)
@@ -132,4 +139,9 @@ void print_array(const char* caption, ATYPE a[], int n)
 		printf("%d,", a[i]);
 	}
 	printf("\n");
+}
+
+static void print_perf(int n, int t, int chunk, double dtime)
+{
+	printf("%d%s%d%s%d%s%f\n", n, SEP, t, SEP, chunk, SEP, dtime);
 }

@@ -8,12 +8,17 @@
 #define ATYPE int
 #endif
 
+#ifndef SEP
+#define SEP ";"
+#endif
+
 // TODO: Additional performance counters for array access (in addition to addition counters)
 
-static void benchmark(ATYPE data[], int n, int* ops);
+static void benchmark(ATYPE data[], int n, int* ops, double* dtime);
 static void scan(ATYPE a[], int n, int* ops);
 static void print_array(const char* caption, ATYPE a[], int n);
-static void print_perf(int n, int t, int ops);
+static void print_perf(int n, int t, int ops, double dtime);
+static void print_perf_debug(int n, int t, int ops);
 
 int main(int argc, char* argv[])
 {
@@ -43,19 +48,23 @@ int main(int argc, char* argv[])
 	}
 
 	if (debug_flag) print_array("input", data, n);
-	benchmark(data, n, &ops);	
 
+	double dtime;
+	benchmark(data, n, &ops, &dtime);	
+
+	if (debug_flag) printf("Time: %f\n", dtime);
 	if (debug_flag) print_array("output", data, n);
-	print_perf(n, t, ops);
+	if (debug_flag) print_perf_debug(n, t, ops);
+	else print_perf(n, t, ops, dtime);
 }
 
-void benchmark(ATYPE data[], int n, int* ops)
+void benchmark(ATYPE data[], int n, int* ops, double* dtime)
 {
 	double stime = omp_get_wtime();
 	scan(data, n, ops);
 	double etime = omp_get_wtime();
 
-	printf("Time: %f\n", etime - stime);
+	*dtime = etime - stime;
 }
 
 void scan(ATYPE a[], int n, int* ops)
@@ -109,7 +118,12 @@ void print_array(const char* caption, ATYPE a[], int n)
 	printf("\n");
 }
 
-static void print_perf(int n, int t, int ops)
+static void print_perf(int n, int t, int ops, double dtime)
+{
+	printf("%d%s%d%s%d%s%f\n", n, SEP, t, SEP, ops, SEP, dtime);
+}
+
+static void print_perf_debug(int n, int t, int ops)
 {
 	printf("Input size: %d\n", n);
 	printf("Threads: %d\n", t);
