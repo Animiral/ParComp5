@@ -19,6 +19,7 @@ static int index_to_rank(int r, int c, int i, int j);
 static void rank_to_index(int r, int c, int rank, int* i, int* j);
 static void genmatrix(ATYPE* submat, int x, int y, int w, int h, int n);
 static void stencil(ATYPE* source, ATYPE* dest, int w, int h);
+static void reference(int m, int n);
 
 static void send_row(ATYPE* mat, int w, int y, int peer);
 static void send_col(ATYPE* mat, int w, int h, int x, int peer);
@@ -113,7 +114,19 @@ int main(int argc, char* argv[])
 	// allocate my submatrix (twice)
 	ATYPE* source = xmalloc((w+2) * (h+2) * sizeof(ATYPE));
 	genmatrix(source, x, y, w, h, n);
+
+	if (debug_flag && (1 == rank))
+	{
+		print_matrix("After gen", source, h+2, w+2);
+	}
+
 	ATYPE* dest = xmalloc(w * h * sizeof(ATYPE));
+
+	if (debug_flag)
+	{
+		fprintf(stderr, "Node %d:  m=%d n=%d c=%d r=%d w=%d h=%d i=%d j=%d x=%d y=%d\n",
+			rank, m, n, c, r, w, h, i, j, x, y);
+	}
 
 	/* ================ BEGIN OF ALGORITHM ================ */
 
@@ -123,45 +136,135 @@ int main(int argc, char* argv[])
 	// columns stage 1: exchange between nodes (2*k) <--> (2*k+1)
 	buffer = xmalloc(h * sizeof(ATYPE));
 
-	if (i & 1)
+	if (j & 1) // communicate with left
 	{
+		// there is always a left neighbour -> no check
 		int peer = rank-1;
-
 		recv_buf(buffer, h, peer);
 		send_col(source, w, h, 0, peer);
 		buf_to_col(source, w, h, -1, buffer);
 	}
-	else
+	else // communicate with right
 	{
-		int peer = rank+1;
-
-		if (i != c-1)
+		if (j < c-1)
 		{
+			int peer = rank+1;
 			send_col(source, w, h, w-1, peer);
 			recv_buf(buffer, h, peer);
-			buf_to_col(source, w, h, w, buffer);
 		}
 		else
 		{
 			memset(buffer, 0, h * sizeof(ATYPE));
 		}
+
+		buf_to_col(source, w, h, w, buffer);
+	}
+
+	// columns stage 2: exchange between nodes (2*k-1) <--> (2*k)
+	if (j & 1) // communicate with right
+	{
+		if (j < c-1)
+		{
+			int peer = rank+1;
+			recv_buf(buffer, h, peer);
+			send_col(source, w, h, w-1, peer);
+		}
+		else
+		{
+			memset(buffer, 0, h * sizeof(ATYPE));
+		}
+
+		buf_to_col(source, w, h, w, buffer);
+	}
+	else // communicate with left
+	{
+		if (j > 0)
+		{
+			int peer = rank-1;
+			send_col(source, w, h, 0, peer);
+			recv_buf(buffer, h, peer);
+		}
+		else
+		{
+			memset(buffer, 0, h * sizeof(ATYPE));
+		}
+
+		buf_to_col(source, w, h, -1, buffer);
 	}
 
 	free(buffer);
-	buffer = NULL;
-
-	// columns stage 2: exchange between nodes (2*k-1) <--> (2*k)
+	buffer = xmalloc(w * sizeof(ATYPE));
 
 	// rows stage 1: exchange between nodes (2*k) <--> (2*k+1) [row index]
+	if (i & 1) // communicate with upper
+	{
+		// there is always an upper neighbour -> no check
+		int peer = rank-c;
+		fprintf(stderr, "Node %d: talk to %d about rows...\n", rank, peer);
+		recv_buf(buffer, w, peer);
+		send_row(source, w, 0, peer);
+		buf_to_row(source, w, -1, buffer);
+	}
+	else // communicate with lower
+	{
+		if (i < r-1)
+		{
+			int peer = rank+c;
+		fprintf(stderr, "Node %d: talk to %d about rows...\n", rank, peer);
+			send_row(source, w, h-1, peer);
+			recv_buf(buffer, w, peer);
+		}
+		else
+		{
+			memset(buffer, 0, w * sizeof(ATYPE));
+		}
+
+		buf_to_row(source, w, h, buffer);
+	}
 
 	// rows stage 2: exchange between nodes (2*k-1) <--> (2*k) [row index]
+	if (i & 1) // communicate with lower
+	{
+		if (i < r-1)
+		{
+			int peer = rank+c;
+		fprintf(stderr, "Node %d: talk to %d about rows...\n", rank, peer);
+			recv_buf(buffer, w, peer);
+			send_row(source, w, h-1, peer);
+		}
+		else
+		{
+			memset(buffer, 0, w * sizeof(ATYPE));
+		}
 
+		buf_to_row(source, w, h, buffer);
+	}
+	else // communicate with upper
+	{
+		if (i > 0)
+		{
+			int peer = rank-c;
+		fprintf(stderr, "Node %d: talk to %d about rows...\n", rank, peer);
+			send_row(source, w, 0, peer);
+			recv_buf(buffer, w, peer);
+		}
+		else
+		{
+			memset(buffer, 0, w * sizeof(ATYPE));
+		}
+
+		buf_to_row(source, w, -1, buffer);
+	}
+
+	free(buffer);
+
+	printf("Node %d: Communication DONE\n", rank);
 
 	// ACTION!
 
-	if (debug_flag && (0 == rank))
+	if (debug_flag && (1 == rank))
 	{
-		print_matrix("Source", source, w+2, h+2);
+		print_matrix("After comm", source, h+2, w+2);
 	}
 
 	stencil(source, dest, w, h);
@@ -195,7 +298,8 @@ int main(int argc, char* argv[])
 				}
 			}
 			
-			print_matrix(NULL, matrix, m, n);
+			print_matrix("Result", matrix, m, n);
+			reference(m, n);
 
 			printf("DONE\n");
 		}
@@ -243,13 +347,13 @@ static void genmatrix(ATYPE* submat, int x, int y, int w, int h, int n)
 		long ii = yy * (w+2) + xx;
 		long seq = (y+yy-1) * n + (x+xx-1);
 
-		if ((0 == xx) || (0 == yy) || (h+1 == xx) || (w+1 == y))
+		if ((0 == xx) || (0 == yy) || ((h+1) == yy) || ((w+1) == xx))
 		{
 			submat[ii] = 0;
 		}
 		else
 		{
-			submat[ii] = (ATYPE) ((13L * seq * seq + seq * 17L + 4L) % 51L);
+			submat[ii] = seq + 1; // (ATYPE) ((13L * seq * seq + seq * 17L + 4L) % 51L);
 		}
 	}
 }
@@ -264,6 +368,17 @@ static void stencil(ATYPE* source, ATYPE* dest, int w, int h)
 		int s = (y+1) * (w+2) + (x+1);
 		dest[d] = (source[s-1] + source[s+1] + source[s-(w+2)] + source[s+(w+2)]) / 4;
 	}
+}
+
+static void reference(int m, int n)
+{
+	ATYPE* source = xmalloc((m+2) * (n+2) * sizeof(ATYPE));
+	ATYPE* dest = xmalloc(m * n * sizeof(ATYPE));
+	genmatrix(source, 0, 0, n, m, n);
+	stencil(source, dest, n, m);
+	print_matrix("Reference result", dest, m, n);
+	free(source);
+	free(dest);
 }
 
 static void send_row(ATYPE* mat, int w, int y, int peer)
