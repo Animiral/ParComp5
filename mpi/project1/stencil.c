@@ -19,7 +19,7 @@ static int index_to_rank(int r, int c, int i, int j);
 static void rank_to_index(int r, int c, int rank, int* i, int* j);
 static void genmatrix(ATYPE* submat, int x, int y, int w, int h, int n);
 static void stencil(ATYPE* source, ATYPE* dest, int w, int h);
-static void reference(int m, int n);
+static ATYPE* reference(int m, int n);
 
 static void send_row(ATYPE* mat, int w, int y, int peer);
 static void send_col(ATYPE* mat, int w, int h, int x, int peer);
@@ -27,8 +27,12 @@ static void recv_buf(ATYPE* buf, int len, int peer);
 static void buf_to_row(ATYPE* mat, int w, int y, ATYPE* buf);
 static void buf_to_col(ATYPE* mat, int w, int h, int x, ATYPE* buf);
 
+static void print_perf(int m, int n, int r, int c, int p, double dtime);
+static void print_perf_debug(int m, int n, int r, int c, int p, double dtime);
+
 static void* xmalloc(int size);
 static void print_matrix(const char* caption, ATYPE* mat, int m, int n);
+static int matrices_equal(ATYPE* m1, ATYPE* m2, int m, int n);
 static void fail(const char* format, ...);
 
 int main(int argc, char* argv[])
@@ -53,8 +57,8 @@ int main(int argc, char* argv[])
 	int i, j;
 	int x, y;
 	int rank, p;
-	char name[MPI_MAX_PROCESSOR_NAME];
-	int nlen;
+	double time_start, time_end; // unused in nodes > 0
+	ATYPE* result = NULL;
 
 	if (parse_args(argc, argv, &debug_flag, "rows", &m, "columns", &n, "number of block columns", &c, NULL, NULL) != 0)
 	{
@@ -72,7 +76,10 @@ int main(int argc, char* argv[])
 	MPI_Comm_size (MPI_COMM_WORLD, &p);
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);
 
-	MPI_Get_processor_name (name, &nlen);
+	if (0 == rank)
+	{
+		time_start = MPI_Wtime();
+	}
 
 	r = p / c;
 
@@ -113,20 +120,8 @@ int main(int argc, char* argv[])
 
 	// allocate my submatrix (twice)
 	ATYPE* source = xmalloc((w+2) * (h+2) * sizeof(ATYPE));
-	genmatrix(source, x, y, w, h, n);
-
-	if (debug_flag && (1 == rank))
-	{
-		print_matrix("After gen", source, h+2, w+2);
-	}
-
 	ATYPE* dest = xmalloc(w * h * sizeof(ATYPE));
-
-	if (debug_flag)
-	{
-		fprintf(stderr, "Node %d:  m=%d n=%d c=%d r=%d w=%d h=%d i=%d j=%d x=%d y=%d\n",
-			rank, m, n, c, r, w, h, i, j, x, y);
-	}
+	genmatrix(source, x, y, w, h, n);
 
 	/* ================ BEGIN OF ALGORITHM ================ */
 
@@ -200,7 +195,6 @@ int main(int argc, char* argv[])
 	{
 		// there is always an upper neighbour -> no check
 		int peer = rank-c;
-		fprintf(stderr, "Node %d: talk to %d about rows...\n", rank, peer);
 		recv_buf(buffer, w, peer);
 		send_row(source, w, 0, peer);
 		buf_to_row(source, w, -1, buffer);
@@ -210,7 +204,6 @@ int main(int argc, char* argv[])
 		if (i < r-1)
 		{
 			int peer = rank+c;
-		fprintf(stderr, "Node %d: talk to %d about rows...\n", rank, peer);
 			send_row(source, w, h-1, peer);
 			recv_buf(buffer, w, peer);
 		}
@@ -228,7 +221,6 @@ int main(int argc, char* argv[])
 		if (i < r-1)
 		{
 			int peer = rank+c;
-		fprintf(stderr, "Node %d: talk to %d about rows...\n", rank, peer);
 			recv_buf(buffer, w, peer);
 			send_row(source, w, h-1, peer);
 		}
@@ -244,7 +236,6 @@ int main(int argc, char* argv[])
 		if (i > 0)
 		{
 			int peer = rank-c;
-		fprintf(stderr, "Node %d: talk to %d about rows...\n", rank, peer);
 			send_row(source, w, 0, peer);
 			recv_buf(buffer, w, peer);
 		}
@@ -258,62 +249,84 @@ int main(int argc, char* argv[])
 
 	free(buffer);
 
-	printf("Node %d: Communication DONE\n", rank);
-
 	// ACTION!
-
-	if (debug_flag && (1 == rank))
-	{
-		print_matrix("After comm", source, h+2, w+2);
-	}
 
 	stencil(source, dest, w, h);
 
+	/* ========== GATHER =========== */
 
-	/* ========== OUTPUT =========== */
-
-	if (debug_flag)
+	if (0 == rank)
 	{
-		if (0 == rank)
+		// TODO: use MPI gather operations
+		result = xmalloc(m * n * sizeof(ATYPE));
+
+		for (int yy = 0; yy < h; yy++)
+		for (int xx = 0; xx < w; xx++)
 		{
-			ATYPE* matrix = xmalloc(m * n * sizeof(ATYPE));
+			result[yy*n+xx] = dest[yy*w+xx];
+		}
+
+		for (int peer = 1; peer < p; peer++)
+		{
+			MPI_Recv(dest, w*h, ATYPE_MPI, peer, peer, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+			int pi, pj;
+			rank_to_index(r, c, peer, &pi, &pj);
 
 			for (int yy = 0; yy < h; yy++)
 			for (int xx = 0; xx < w; xx++)
 			{
-				matrix[yy*n+xx] = dest[yy*w+xx];
+				result[(yy+pi*h)*n+(xx+pj*w)] = dest[yy*w+xx];
 			}
+		}
+	}
+	else
+	{
+		MPI_Send(dest, w*h, ATYPE_MPI, 0, rank, MPI_COMM_WORLD);
+	}
 
-			for (int peer = 1; peer < p; peer++)
-			{
-				MPI_Recv(dest, w*h, ATYPE_MPI, peer, peer, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	/* ========== PERFORMANCE MEASUREMENTS =========== */
 
-				int pi, pj;
-				rank_to_index(r, c, peer, &pi, &pj);
+	if (0 == rank)
+	{
+		time_end = MPI_Wtime();
 
-				for (int yy = 0; yy < h; yy++)
-				for (int xx = 0; xx < w; xx++)
-				{
-					matrix[(yy+pi*h)*n+(xx+pj*w)] = dest[yy*w+xx];
-				}
-			}
-			
-			print_matrix("Result", matrix, m, n);
-			reference(m, n);
-
-			printf("DONE\n");
+		if (debug_flag)
+		{
+			print_perf_debug(m, n, r, c, p, time_end - time_start);
 		}
 		else
 		{
-			MPI_Send(dest, w*h, ATYPE_MPI, 0, rank, MPI_COMM_WORLD);
+			print_perf(m, n, r, c, p, time_end - time_start);
 		}
 	}
 
+	/* ========== OUTPUT =========== */
+
+	if (debug_flag && (0 == rank))
+	{
+		//print_matrix("Result", matrix, m, n);
+		ATYPE* refmat = reference(m, n);
+		if (matrices_equal(result, refmat, m, n) != 0)
+		{
+			printf("SUCCESS\n");
+		}
+		else
+		{
+			printf("EPIC FAILURE\n");
+		}
+		free(refmat);
+	}
+
+	free(result);
 	free(source);
 	free(dest);
+
 	MPI_Finalize();
+
 	return 0;
 }
+
 
 static int index_to_rank(int r, int c, int i, int j)
 {
@@ -370,16 +383,17 @@ static void stencil(ATYPE* source, ATYPE* dest, int w, int h)
 	}
 }
 
-static void reference(int m, int n)
+static ATYPE* reference(int m, int n)
 {
 	ATYPE* source = xmalloc((m+2) * (n+2) * sizeof(ATYPE));
 	ATYPE* dest = xmalloc(m * n * sizeof(ATYPE));
 	genmatrix(source, 0, 0, n, m, n);
 	stencil(source, dest, n, m);
-	print_matrix("Reference result", dest, m, n);
+	//print_matrix("Reference result", dest, m, n);
 	free(source);
-	free(dest);
+	return dest;
 }
+
 
 static void send_row(ATYPE* mat, int w, int y, int peer)
 {
@@ -428,6 +442,23 @@ static void buf_to_col(ATYPE* mat, int w, int h, int x, ATYPE* buf)
 	}
 }
 
+
+static void print_perf(int m, int n, int r, int c, int p, double dtime)
+{
+	printf("%d%s%d%s%d%s%d%s%d%s%f\n", m, SEP, n, SEP, r, SEP, c, SEP, p, SEP, dtime);
+}
+
+static void print_perf_debug(int m, int n, int r, int c, int p, double dtime)
+{
+	printf("Input rows: %d\n", m);
+	printf("Input columns: %d\n", n);
+	printf("Block rows: %d\n", r);
+	printf("Block columns: %d\n", c);
+	printf("Nodes: %d\n", p);
+	printf("Time: %f\n", dtime);
+}
+
+
 static void* xmalloc(int size)
 {
 	void* ret = malloc(size);
@@ -450,6 +481,16 @@ static void print_matrix(const char* caption, ATYPE* mat, int m, int n)
 		}
 		printf("\n");
 	}
+}
+
+static int matrices_equal(ATYPE* m1, ATYPE* m2, int m, int n)
+{
+	for (int i = 0; i < m*n; i++)
+	{
+		if (m1[i] != m2[i]) return 0;
+	}
+
+	return 1;
 }
 
 static void fail(const char* format, ...)
