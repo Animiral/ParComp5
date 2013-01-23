@@ -14,20 +14,6 @@
 #define SEP ";"
 #endif
 
-/*
-  Terminology:
-	m: Number of rows in matrix,          e.g. 15
-	n: Number of columns in matrix,       e.g. 8
-	r: Number of block rows,              e.g. 5
-	c: Number of block columns,           e.g. 4
-	h: Height (rows) of a single block,   e.g. 3
-	w: Width (columns) of a single block, e.g. 2
-	i: Block Row index                    (0-4)
-	j: Block Column index                 (0-3)
-	x: Row index in matrix                (0-14)
-	y: Column index in matrix             (0-7)
- */
-
 static int index_to_rank(int r, int c, int i, int j);
 static void rank_to_index(int r, int c, int rank, int* i, int* j);
 static void genmatrix(ATYPE* submat, int x, int y, int w, int h);
@@ -38,13 +24,48 @@ static void send_col(ATYPE* mat, int h, int x, int peer);
 static void recv_buf(ATYPE* buf, int len, int peer);
 
 static void* xmalloc(int size);
+static void print_matrix(const char* caption, ATYPE mat[], int m, int n);
+
+/*
+static int *m_ptr, *n_ptr, *c_ptr, *r_ptr, *w_ptr, *h_ptr, *i_ptr, *j_ptr, *x_ptr, *y_ptr;
+
+static void print_vars()
+{
+	fprintf(stdout, "**** m=%d n=%d c=%d r=%d w=%d h=%d i=%d j=%d x=%d y=%d\n",
+		*m_ptr, *n_ptr, *c_ptr, *r_ptr, *w_ptr, *h_ptr, *i_ptr, *j_ptr, *x_ptr, *y_ptr);
+}
+*/
+
 
 int main(int argc, char* argv[])
 {
+	/*
+	  Terminology:
+		m: Number of rows in matrix,          e.g. 15
+		n: Number of columns in matrix,       e.g. 8
+		r: Number of block rows,              e.g. 5
+		c: Number of block columns,           e.g. 4
+		h: Height (rows) of a single block,   e.g. 3
+		w: Width (columns) of a single block, e.g. 2
+		i: Block Row index                    (0-4)
+		j: Block Column index                 (0-3)
+		x: Row index in matrix                (0-14)
+		y: Column index in matrix             (0-7)
+	 */
 	int debug_flag;
-	int m;
-	int n;
-	int c;
+	int m, n;
+	int c, r;
+	int w, h;
+	int i, j;
+	int x, y;
+	int rank, p;
+	char name[MPI_MAX_PROCESSOR_NAME];
+	int nlen;
+
+/*
+	m_ptr = &m; n_ptr = &n; c_ptr = &c; r_ptr = &r; w_ptr = &w; h_ptr = &h;
+	i_ptr = &i; j_ptr = &j, x_ptr = &x; y_ptr = &y;
+*/
 
 	if (parse_args(argc, argv, &debug_flag, "rows", &m, "columns", &n, "number of block columns", &c, NULL, NULL) != 0)
 	{
@@ -57,10 +78,6 @@ int main(int argc, char* argv[])
 		exit(1);
 	}
 
-	int rank, p;
-	char name[MPI_MAX_PROCESSOR_NAME];
-	int nlen;
-
 	MPI_Init (&argc, &argv);
 
 	// get rank and size from communicator
@@ -69,7 +86,7 @@ int main(int argc, char* argv[])
 
 	MPI_Get_processor_name (name, &nlen);
 
-	int r = p / c;
+	r = p / c;
 
 	if (r < 1) 
 	{
@@ -96,11 +113,12 @@ int main(int argc, char* argv[])
 	}
 
 	// width and height of a block
-	int w = n / c;
-	int h = m / r;
+	w = n / c;
+	h = m / r;
 
-	int i, j; // this node's block index in the matrix
 	rank_to_index(r, c, rank, &i, &j);
+
+	// fprintf(stderr, "DEBUG: node %d: my block index is i:%d j:%d\n", rank, i, j);
 
 	if ((i < 0) || (j < 0))
 	{
@@ -109,8 +127,8 @@ int main(int argc, char* argv[])
 	}
 
 	// start indices of this node's submatrix
-	int x = j * w;
-	int y = i * h;
+	x = j * w;
+	y = i * h;
 
 	// allocate my submatrix (twice)
 	ATYPE* source = xmalloc(w * h * sizeof(ATYPE));
@@ -119,7 +137,47 @@ int main(int argc, char* argv[])
 
 	/* ================ BEGIN OF ALGORITHM ================ */
 
+/*
+	if (debug_flag)
+	{
+		fprintf(stdout, "DEBUG: node %d: m=%d, n=%d\n", rank, m, n);
+		fprintf(stdout, "DEBUG: node %d: r=%d, c=%d\n", rank, r, c);
+		fprintf(stdout, "DEBUG: node %d: h=%d, w=%d\n", rank, h, w);
+		fprintf(stdout, "DEBUG: node %d: i=%d, j=%d\n", rank, i, j);
+		fprintf(stdout, "DEBUG: node %d: y=%d, x=%d\n", rank, y, x);
+
+		fprintf(stdout, "DEBUG: node %d: submat before stencil\n", rank);
+		for (int ii = 0; ii < h; ii++) 
+		{
+			printf("[%02d]  ", ii);
+			print_vars();
+
+			for (int jj = 0; jj < w; jj++)
+			{
+				printf("%2d  ", source[ii*w+jj]);
+			}
+			printf("\n");
+		}
+		fprintf(stdout, "DEBUG CHECKPOINT\n", rank);
+	}
+*/
+
 	stencil(source, dest, w, h);
+
+/*
+	if (debug_flag)
+	{
+		fprintf(stdout, "DEBUG: node %d: submat after stencil\n", rank);
+		for (int ii = 0; ii < h; ii++) 
+		{
+			for (int jj = 0; jj < w; jj++)
+			{
+				printf("%2d  ", dest[ii*w+jj]);
+			}
+			printf("\n");
+		}
+	}
+*/
 
 	ATYPE* buffer;
 	int ret;
@@ -131,7 +189,12 @@ int main(int argc, char* argv[])
 	{
 		int peer = rank-1;
 
+		fprintf(stderr, "DEBUG: node %d: recv from %d\n", rank, peer);
+
 		recv_buf(buffer, h, peer);
+
+		fprintf(stderr, "DEBUG: node %d: send to %d\n", rank, peer);
+
 		send_col(source, h, 0, peer);
 
 		// TODO: computation
@@ -140,9 +203,14 @@ int main(int argc, char* argv[])
 	{
 		int peer = rank+1;
 
-		if (i != h-1)
-		{
+		if (i != c-1)
+		{ 
+			fprintf(stderr, "DEBUG: node %d: send to %d\n", rank, peer);
+
 			send_col(source, h, w-1, peer);
+
+			fprintf(stderr, "DEBUG: node %d: recv from %d\n", rank, peer);
+
 			recv_buf(buffer, h, peer);
 		}
 		else
@@ -178,7 +246,7 @@ int main(int argc, char* argv[])
 
 	if (debug_flag)
 	{
-		if (rank == 0)
+		if (0 == rank)
 		{
 			ATYPE* matrix = xmalloc(m * n * sizeof(ATYPE));
 
