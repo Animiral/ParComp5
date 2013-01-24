@@ -1,7 +1,0 @@
-args <- commandArgs()
-rawdata <- read.csv(args[4], header = FALSE, sep=";")
-names(rawdata) <- c('length', 'threads', 'ops', 'time')
-data <- subset(rawdata, length == args[5], select=c(length, threads, time))
-jpeg('test.jpg')
-plot(data$time)
-dev.off()

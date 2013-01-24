@@ -1,0 +1,8 @@
+args <- commandArgs(trailingOnly=TRUE)
+rawdata <- read.csv(args[1], header = FALSE, sep=";")
+names(rawdata) <- c('m', 'n', 'threads', 'time')
+data <- subset(rawdata, threads == args[2] & m == n, select=c(m, n, threads, time))
+jpeg(args[3])
+plot(data$m, data$time, main=paste("Fixed Threads\n", args[1], ":",args[2], sep=""), xlab="Size", ylab="Time")
+axis(1, at=1:length(data$m), labels=c(data$m))
+dev.off()
