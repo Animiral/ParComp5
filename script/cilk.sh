@@ -38,8 +38,10 @@ do
 		c=$C_MIN
 		while [ $c -le $C_MAX ]
 		do
-			echo "$x $n 1 $c"
-			$x $n 1 $c >> $csv # || echo "FAIL"
+			# TODO: number of threads/nodes
+			# use Cilk_active_size, Self from <cilk.h>
+			echo "$x --nproc 1 $n 1 $c"
+			$x --nproc 1 $n 1 $c >> $csv # || echo "FAIL"
 
 			let c=$c*$C_INC;
 		done

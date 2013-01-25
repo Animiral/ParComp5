@@ -1,18 +1,21 @@
-CFLAGS=-I../include -D_XOPEN_SOURCE=600
-UTIL_O=../include/util/util.o
+CFLAGS=-g --std=gnu99 -I../../include -D_XOPEN_SOURCE=600
+UTIL_O=../../include/util/util.o
 
-all: prefix-sums
+all: allgather reduce-scatter
 
 .utils: $(UTIL_O)
 	true
 
-$(UTIL_O) : ../include/util/args.c
+$(UTIL_O) : ../../include/util/args.c
 	gcc $(CFLAGS) -c $^ -o $@
 
-prefix-sums: prefix-sums.cilk .utils
-	cilkc $(CFLAGS) prefix-sums.cilk $(UTIL_O) -o $@
+allgather: allgather.c .utils
+	mpicc $(CFLAGS) allgather.c $(UTIL_O) -o $@
+
+reduce-scatter: reduce-scatter.c .utils
+	mpicc $(CFLAGS) reduce-scatter.c $(UTIL_O) -o $@
 
 clean:
-	rm prefix-sums
+	rm allgather reduce-scatter
 
 .PHONY: all .utils clean
