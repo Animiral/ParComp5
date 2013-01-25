@@ -1,0 +1,16 @@
+OMP P1:
+1. x=Length, y=Time
+2. x=Threads, y=Time
+3. TODO: Compare all for fixed Threads
+
+OMP P2:
+1. Fixed #(Threads)
+2. Fixed #(Size)
+
+CILK:
+1: Fixed Size
+2: Fixed Threads
+
+
+MPI:
+

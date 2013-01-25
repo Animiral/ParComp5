@@ -1,0 +1,19 @@
+MPI1:
+MPI_Datatype()
+Reference time
+
+MPI2:
+Reference solution
+
+CILK: 
+Activate Remove Thread Argument
+Compare to data parallel implementation
+----
+Generell:
+MPI_Sendrecv()
+MPI_Gather
+Errorhandling
+Interesting Benchmark # Generator
+
+Run Scripts
+Pull Log scripts

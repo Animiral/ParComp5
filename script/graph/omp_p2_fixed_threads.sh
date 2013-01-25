@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Output for square matrices.
 # $1: File Name
 # $2: Number of threads
 # $3: Output file
