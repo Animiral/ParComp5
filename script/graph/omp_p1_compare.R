@@ -20,7 +20,7 @@ lines(f_ite$threads, f_ite$time, type="o", col="blue")
 lines(f_hil$threads, f_hil$time, type="o", col="green")
 #plot(f_rec$threads, f_rec$time, type="o")
 
-legend(25, 0.1 , c("Recursive", "Iterative", "Hillis-Steele", "Total Sum"), cex=0.8, col=c("red", "blue", "green", "yellow"), pch=21:24, lty=1:4);
+legend(25, max(recursive$time) , c("Recursive", "Iterative", "Hillis-Steele", "Total Sum"), cex=0.8, col=c("red", "blue", "green", "yellow"), pch=21:24, lty=1:4);
 title("Comparison")	
 
 

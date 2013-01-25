@@ -7,7 +7,6 @@ full_data <- subset(rawdata, threads == args[2], select=c(length, threads, chunk
 jpeg(args[3])
 
 vals <- unique(full_data$chunk)
-print(vals)
 
 plot(full_data$length, full_data$time, type="n", main=paste(args[1], ",\nThreads:",args[2], sep=""), xlab="Size", ylab="Time")
 for (i in 1:length(vals)) {

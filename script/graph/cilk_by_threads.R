@@ -8,12 +8,11 @@ jpeg(args[3])
 
 vals <- unique(full_data$threads)
 
-plot(data$chunk, data$time, type="o", main=paste(args[1], ",\nSize:",args[2], sep=""), xlab="Chunk", ylab="Time")
+plot(full_data$chunk, full_data$time, type="n", main=paste(args[1], ",\nSize:",args[2], sep=""), xlab="Chunk", ylab="Time")
 for (i in 1:length(vals)) {
 	data <- subset(full_data, threads == vals[i])
 	lines(data$chunk, data$time, col=i)
 }
-legend(1, length(vals), cex=0.8, c(vals), col=c(1:length(vals)))
+legend(1, max(full_data$time), cex=0.8, c(vals), col=c(1:length(vals)), pch=1, lty=1)
 
-axis(1, at=1:length(data$chunk), labels=c(data$chunk))
 dev.off()
