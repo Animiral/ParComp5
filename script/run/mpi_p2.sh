@@ -2,7 +2,7 @@
 
 SELF=$(basename $0)
 RESULT_DIR='./result'
-EXES='./omp/project1/recursive ./omp/project1/iterative ./omp/project1/hillis-steele ./omp/project1/totalsum'
+EXES='./mpi/project2/prefix-sums'
 
 # directory check
 if [ ! -d script ]
@@ -21,13 +21,13 @@ fi
 
 mkdir -p $RESULT_DIR
 
-numgen_n='./script/numgen/numgen 100 500'       # input size
-numgen_t='./script/numgen/numgen 1 32'          # thread count
+numgen_n='./script/numgen/numgen 256 270'      # input size
+numgen_t='./script/numgen/numgen 1 5'          # thread count
 
 for x in $EXES
 do
 	prog=$(basename $x)
-	csv="$RESULT_DIR/$TIME-omp-p1-$prog.csv"
+	csv="$RESULT_DIR/$TIME-mpi-p2-$prog.csv"
 	touch $csv
 
 	for n in $($numgen_n)
@@ -37,7 +37,7 @@ do
 	do
 
 		echo "[$SELF] RUN $prog n=$n t=$t"
-		$x $n $t >> $csv # || echo "FAIL"
+		mpirun -np $t $x $n 2>/dev/null >> $csv # || echo "FAIL"
 
 	done
 

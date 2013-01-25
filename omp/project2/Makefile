@@ -1,19 +1,17 @@
 CFLAGS=-I../../include --std=c99 -fopenmp -Wall
 UTIL_O=../../include/util/util.o
+UTILS=$(UTIL_O)
 
 all: matmult
 
-.utils: $(UTIL_O)
-	true
-
-$(UTIL_O) : ../../include/util/args.c
+$(UTIL_O) : ../../include/util/util.c
 	gcc $(CFLAGS) -c $^ -o $@
 
-matmult: matmult.c .utils
+matmult: matmult.c $(UTILS)
 	gcc $(CFLAGS) matmult.c $(UTIL_O) -o $@
 
 clean:
 	rm matmult
 	
-.PHONY: all .utils clean
+.PHONY: all clean
 	

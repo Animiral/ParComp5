@@ -4,7 +4,7 @@
 #include <mpi.h>
 #include <errno.h>
 #include <stdarg.h>
-#include "util/args.h"
+#include "util/util.h"
 
 #ifndef ATYPE
 #define ATYPE int

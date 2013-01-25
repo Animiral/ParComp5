@@ -4,7 +4,7 @@
 #include <mpi.h>
 #include <errno.h>
 #include <stdarg.h>
-#include "util/args.h"
+#include "util/util.h"
 
 #ifndef ATYPE
 #define ATYPE int
@@ -33,7 +33,8 @@ static void print_perf_debug(int m, int n, int r, int c, int p, double dtime);
 static void* xmalloc(int size);
 static void print_matrix(const char* caption, ATYPE* mat, int m, int n);
 static int matrices_equal(ATYPE* m1, ATYPE* m2, int m, int n);
-static void fail(const char* format, ...);
+static void fail(int finalize);
+static void fail_msg(int finalize, const char* format, ...);
 
 int main(int argc, char* argv[])
 {
@@ -62,12 +63,17 @@ int main(int argc, char* argv[])
 
 	if (parse_args(argc, argv, &debug_flag, "rows", &m, "columns", &n, "number of block columns", &c, NULL, NULL) != 0)
 	{
-		fail("Error parsing command args.\n");
+		fail_msg(0, "Error parsing command args.\n");
 	}
 
 	if ((m < 1) || (n < 1) || (c < 1))
 	{
-		fail("Bad input?.\n");
+		fail_msg(0, "Bad input?\n");
+	}
+
+	if (c > n)
+	{
+		debug_flag ? fail_msg(1, "ERROR: matrix with %d columns cannot be divided into %d columns.\n", n, c) : fail(1);
 	}
 
 	MPI_Init (&argc, &argv);
@@ -85,22 +91,17 @@ int main(int argc, char* argv[])
 
 	if (r < 1) 
 	{
-		fail("Bad input?.\n");
+		debug_flag ? fail_msg(1, "Bad input?\n") : fail(1);
 	}
 
 	if (r * c != p)
 	{
-		fail("ERROR: %d rows * %d columns cannot be exactly fit to %d nodes.\n", r, c, p);
+		debug_flag ? fail_msg(1, "ERROR: %d rows * %d columns cannot be exactly fit to %d nodes.\n", r, c, p) : fail(1);
 	}
 
 	if (r > m)
 	{
-		fail("ERROR: matrix with %d rows cannot be divided into %d rows.\n", m, r);
-	}
-
-	if (c > n)
-	{
-		fail("ERROR: matrix with %d columns cannot be divided into %d columns.\n", n, c);
+		debug_flag ? fail_msg(1, "ERROR: matrix with %d rows cannot be divided into %d rows.\n", m, r) : fail(1);
 	}
 
 	// width and height of a block
@@ -111,7 +112,7 @@ int main(int argc, char* argv[])
 
 	if ((i < 0) || (j < 0))
 	{
-		fail("ERROR: this node (%d) does not have an assigned matrix block.\n", rank);
+		fail_msg(1, "ERROR: this node (%d) does not have an assigned matrix block.\n", rank);
 	}
 
 	// start indices of this node's submatrix
@@ -464,7 +465,7 @@ static void* xmalloc(int size)
 	void* ret = malloc(size);
 	if (NULL == ret)
 	{
-		fail("MALLOC ERROR: %s\n", strerror(errno));
+		fail_msg(0, "MALLOC ERROR: %s\n", strerror(errno));
 	}
 	else return ret;
 }
@@ -493,11 +494,27 @@ static int matrices_equal(ATYPE* m1, ATYPE* m2, int m, int n)
 	return 1;
 }
 
-static void fail(const char* format, ...)
+static void fail(int finalize)
+{
+	if (finalize)
+	{
+		MPI_Finalize();
+	}
+
+	exit(1);
+}
+
+static void fail_msg(int finalize, const char* format, ...)
 {
 	va_list args;
     va_start(args, format);
     vfprintf(stderr, format, args);
     va_end(args);
+
+	if (finalize)
+	{
+		MPI_Finalize();
+	}
+
 	exit(1);
 }

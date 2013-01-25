@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <alloca.h>
-#include "util/args.h"
+#include "util/util.h"
 
 #ifndef ATYPE
 #define ATYPE int

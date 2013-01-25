@@ -1,27 +1,29 @@
 #!/bin/bash
 
+SELF=$(basename $0)
+RESULT_DIR='./result'
+EXES='./cilk/prefix-sums'
+
 # directory check
 if [ ! -d script ]
 then
-	echo 'WRONG DIRECTORY!' >&2
+	echo '[$SELF] WRONG DIRECTORY!' >&2
 	exit 1
 fi
 
-RESULT_DIR='./result'
-TIME=$(date +'%m-%d-%H%M-%S')
+# timestamp or other run-identifying parameter
+if [ $1 ]
+then
+	TIME=$1
+else
+	TIME=$(date +'%m-%d-%H%M-%S')
+fi
 
 mkdir -p $RESULT_DIR
 
-# input size
-N_MIN=100
-N_MAX=1000000 # for demo; increase to several GB later
-N_INC=2 # mult factor
-
-# chunk size
-C_MIN=1
-C_INC=2 # mult factor
-
-EXES='./cilk/prefix-sums'
+numgen_n='./script/numgen/numgen 100 500'       # input size
+numgen_c='./script/numgen/numgen 1 30'          # chunk size
+numgen_t='./script/numgen/numgen 1 32'          # thread count
 
 for x in $EXES
 do
@@ -29,25 +31,25 @@ do
 	csv="$RESULT_DIR/$TIME-cilk-$prog.csv"
 	touch $csv
 
-	n=$N_MIN
-	while [ $n -le $N_MAX ]
+	for n in $($numgen_n)
 	do
-		echo "RUN $prog n=$n"
 
-		let C_MAX=$n/2
-		c=$C_MIN
-		while [ $c -le $C_MAX ]
-		do
-			# TODO: number of threads/nodes
-			# use Cilk_active_size, Self from <cilk.h>
-			echo "$x --nproc 1 $n 1 $c"
-			$x --nproc 1 $n 1 $c >> $csv # || echo "FAIL"
+	for c in $($numgen_c)
+	do
 
-			let c=$c*$C_INC;
-		done
+	for t in $($numgen_t)
+	do
 
-		let n=$n*$N_INC;
+		echo "[$SELF] RUN $prog n=$n c=$c t=$t"
+		# TODO: number of threads/nodes
+		# use Cilk_active_size, Self from <cilk.h>
+		$x --nproc $t $n 1 $c >> $csv # || echo "FAIL"
+
+	done
+
+	done
+
 	done
 done
 
-echo "DONE"
+echo "[$SELF] DONE"
