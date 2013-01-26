@@ -28,7 +28,7 @@ numgen_t='./script/numgen/numgen 1 5'          # thread count
 for x in $EXES
 do
 	prog=$(basename $x)
-	csv="$RESULT_DIR/$TIME-mpi-p2-$prog.csv"
+	csv="$RESULT_DIR/$TIME-mpi-p3-$prog.csv"
 	touch $csv
 
 	for m in $($numgen_m)
