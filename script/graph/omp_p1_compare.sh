@@ -6,5 +6,5 @@
 # $4: Totalsum
 # $5: Length
 # $6: Output File Name
-cat omp_p1_compare.R | R --vanilla --slave --args $1 $2 $3 $4 $5 $6
+cat ./script/graph/omp_p1_compare.R | R --vanilla --slave --args $1 $2 $3 $4 $5 $6
 exit 0

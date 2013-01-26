@@ -91,7 +91,8 @@ void print_array(const char* caption, ATYPE a[], int n)
 
 static void print_perf(int n, int t, double dtime)
 {
-	printf("%d%s%d%s%f\n", n, SEP, t, SEP, dtime);
+    // Print additional 0 ops counter to match other implementations.
+	printf("%d%s%d%s%d%s%f\n", n, SEP, t, SEP, 0, SEP, dtime);
 }
 
 static void print_perf_debug(int n, int t)
