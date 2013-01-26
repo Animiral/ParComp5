@@ -1,4 +1,4 @@
-#!bin/bash
+#!/bin/bash
 
 # (n, m, p, time) -- Pass all arguments
 # $1 Input File 1 (Reduce Scatter)
@@ -7,3 +7,4 @@
 # $4 Fixed n
 # $5 Output file
 cat ./script/graph/mpi_p3.R | R --vanilla --slave --args $1 $2 $3 $4 $5
+exit 0

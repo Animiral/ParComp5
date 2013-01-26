@@ -1,8 +1,7 @@
-#Vary the load on different processes for fixed m, n, p
-
 args <- commandArgs(trailingOnly=TRUE)
+print(paste("Vary Size of Process, ", args, sep=""))
 rawdata <- read.csv(args[1], header = FALSE, sep=";")
-names(rawdata) <- c('n', 'm', 'r', 'c', 'p' 'dtime', 'rtime')
+names(rawdata) <- c('m', 'n', 'r', 'c', 'p', 'dtime')
 filtered <- subset(rawdata, p == args[2])
 
 uniqueN <- unique(filtered$n)
@@ -14,14 +13,16 @@ plot(filtered$n, filtered$dtime, type="o", xlab="n*m", ylab="Time", col="blue")
 for (i in 1:length(uniqueN)) {
 
 	filterN <- subset(filtered, n==uniqueN[i])
+    thisN <- uniqueN[i]
 	for (j in 1:length(uniqueM)) {
 		filterM <- subset(filterN, m==uniqueM[j])
 		mnDtimeMean <- mean(filterM$dtime)
-		mnRtimeMean <- mean(filterM$rtime)
-		pntD <- c((m*n), mnDtimeMean)
-		pntR <- c((m*n), mnRtimeMean)
+#		mnRtimeMean <- mean(filterM$rtime)
+        thisM <- uniqueM[j]
+		pntD <- c((thisM*thisN), mnDtimeMean)
+#		pntR <- c((m*n), mnRtimeMean)
 		points(pntD, col="blue")
-		points(pntR, col="red"))
+#		points(pntR, col="red")
 	}
 
 }

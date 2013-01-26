@@ -7,7 +7,7 @@ if (length(data) < 1) {
     q()
 }
 
-data <- data[with(data, order(length)), ]
+data <- data[with(data, order(threads)), ]
 
 jpeg(args[3], width=1024, height=1024)
 plot(data$threads, data$time, type="o", main=paste(args[1], ":",args[2], sep=""), xlab="Threads", ylab="Time")

@@ -3,3 +3,4 @@
 result/
 *.jpg
 *.o
+.DS_Store
