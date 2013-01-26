@@ -6,4 +6,4 @@
 # $3 Fixed m
 # $4 Fixed n
 # $5 Output file
-cat mpi_p3.R | R --vanilla --slave --args $1 $2 $3 $4 $5
+cat ./script/graph/mpi_p3.R | R --vanilla --slave --args $1 $2 $3 $4 $5

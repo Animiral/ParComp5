@@ -8,6 +8,6 @@ filtered <- subset(rawdata, m == args[2] & n == args[3] & p == args[4])
 #At this point, all that varies are r, c, dtime, rtime
 
 
-jpeg(args[5])
+jpeg(args[5], width=1024, height=1024)
 plot(filtered$dtime, filtered$r, type="o", xlab="R", ylab="Time", col="blue")
 dev.off()

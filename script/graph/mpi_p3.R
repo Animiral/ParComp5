@@ -7,7 +7,7 @@ names(file2) <- c('m', 'n', 'p', 'time')
 fFilter1 <- subset(file1, n==args[4] & m==args[3])
 fFilter2 <- subset(file2, n==args[4] & m==args[3])
 
-jpeg(args[5])
+jpeg(args[5], width=1024, height=1024)
 plot(fFilter1$p, fFilter1$time, type="o", xlab="Processes", ylab="Time", col="blue")
 plot(fFilter2$p, fFilter2$time, type="o", col="red")
 

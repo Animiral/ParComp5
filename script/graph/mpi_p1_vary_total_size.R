@@ -8,7 +8,7 @@ filtered <- subset(rawdata, p == args[2])
 uniqueN <- unique(filtered$n)
 uniqueM <- unique(filtered$m)
 
-jpeg(args[3])
+jpeg(args[3], width=1024, height=1024)
 plot(filtered$n, filtered$dtime, type="o", xlab="n*m", ylab="Time", col="blue")
 
 for (i in 1:length(uniqueN)) {

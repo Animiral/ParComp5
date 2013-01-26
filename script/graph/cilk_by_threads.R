@@ -1,10 +1,11 @@
 # Fixed Size
 # Args: File Name, Desired Length, Out File
 args <- commandArgs(trailingOnly=TRUE)
+print(paste("CILK Fixed Length, Args:", args, sep=""))
 rawdata <- read.csv(args[1], header = FALSE, sep=";")
 names(rawdata) <- c('length', 'threads', 'chunk', 'time')
 full_data <- subset(rawdata, length == args[2], select=c(length, threads, chunk, time))
-jpeg(args[3])
+jpeg(args[3], width=1024, height=1024)
 
 vals <- unique(full_data$threads)
 

@@ -2,4 +2,4 @@
 
 # (n, p, time) -- Pass all arguments
 
-cat mpi_p2.R | R --vanilla --slave --args $1 $2
+cat ./script/graph/mpi_p2.R | R --vanilla --slave --args $1 $2

@@ -4,7 +4,7 @@ names(rawdata) <- c('n', 'p', 'time')
 
 ps <- unique(rawdata$p)
 
-jpeg(args[2])
+jpeg(args[2], width=1024, height=1024)
 plot(rawdata$n, rawdata$time, type="n", xlab="n", ylab="Time")
 
 for (i in 1:length(ps)) {
