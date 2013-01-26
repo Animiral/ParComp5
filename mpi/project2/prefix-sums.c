@@ -17,8 +17,9 @@
 
 static ATYPE* genblock(int rank, int n, int p, int* size);
 static void seq_sum(ATYPE* block, int n);
-static void dist_sum(int rank, int p, int b, int* prefix);
+static void dist_sum(int rank, int p, ATYPE b, ATYPE* prefix);
 static void add_prefix(ATYPE* block, int n, int prefix);
+static ATYPE* reference(int n);
 
 static void print_perf(int n, int p, double dtime);
 static void print_perf_debug(int n, int p, double dtime);
@@ -33,7 +34,7 @@ int main(int argc, char* argv[])
 	int debug_flag;
 	int n;       // input size
 	int size;    // block size
-	int prefix;  // partial sum from lower ranked nodes
+	ATYPE prefix;  // partial sum from lower ranked nodes
 	int rank, p;
 	ATYPE* block = NULL;
 	ATYPE* result = NULL;
@@ -67,36 +68,6 @@ int main(int argc, char* argv[])
 	dist_sum(rank, p, block[size-1], &prefix);
 	add_prefix(block, size, prefix);
 
-	/* Gather */
-
-	if (0 == rank)
-	{
-		// TODO: use MPI gather operations
-		result = xmalloc(n * sizeof(ATYPE));
-		int c;
-
-		for (c = 0; c < size; c++)
-		{
-			result[c] = block[c];
-		}
-
-		for (int peer = 1; peer < p; peer++)
-		{
-			int bsize = n / p + ((peer < n % p) ? 1 : 0);
-			MPI_Recv(block, bsize, ATYPE_MPI, peer, peer, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-			for (int i = 0; i < bsize; i++)
-			{
-				result[c+i] = block[i];
-			}
-			c += bsize;
-		}
-	}
-	else
-	{
-		MPI_Send(block, size, ATYPE_MPI, 0, rank, MPI_COMM_WORLD);
-	}
-
 	/* Measure performance */
 
 	if (0 == rank)
@@ -105,15 +76,60 @@ int main(int argc, char* argv[])
 
 		if (debug_flag)
 		{
-			print_array("Result", result, n);
 			print_perf_debug(n, p, time_end - time_start);
 		}
 		else
 		{
 			print_perf(n, p, time_end - time_start);
 		}
+	}
 
-		free(result);
+	/* Gather */
+
+	if (debug_flag)
+	{
+		if (0 == rank)
+		{
+			// TODO: use MPI gather operations
+			result = xmalloc(n * sizeof(ATYPE));
+			int c;
+
+			for (c = 0; c < size; c++)
+			{
+				result[c] = block[c];
+			}
+
+			for (int peer = 1; peer < p; peer++)
+			{
+				int bsize = n / p + ((peer < n % p) ? 1 : 0);
+				MPI_Recv(block, bsize, ATYPE_MPI, peer, peer, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+				for (int i = 0; i < bsize; i++)
+				{
+					result[c+i] = block[i];
+				}
+				c += bsize;
+			}
+
+			/* ========== OUTPUT =========== */
+
+			print_array("Result", result, n);
+			ATYPE* ref = reference(n);
+			if (array_equal(result, ref, n))
+			{
+				printf("SUCCESS\n");
+			}
+			else
+			{
+				printf("EPIC FAILURE\n");
+			}
+			free(ref);
+			free(result);
+		}
+		else
+		{
+			MPI_Send(block, size, ATYPE_MPI, 0, rank, MPI_COMM_WORLD);
+		}
 	}
 
 	MPI_Finalize();
@@ -136,8 +152,9 @@ static ATYPE* genblock(int rank, int n, int p, int* size)
 
 	for (int i = 0; i < *size; i++)
 	{
-		int global_i = n * rank / p + ((n % p) ? 1 : 0) + i;
-		block[i] = (global_i % 3) == 0;
+		int global_i = n * rank / p + (((n*rank) % p) ? 1 : 0) + i;
+		// block[i] = (global_i % 3) == 0;
+		block[i] = global_i + 1;
 	}
 
 	return block;
@@ -151,31 +168,7 @@ static void seq_sum(ATYPE* block, int n)
 	}
 }
 
-static void send_b(int peer, int p, int b)
-{
-	int ret;
-	if (peer < p)
-	{
-		ret = MPI_Send(&b, 1, ATYPE_MPI, peer, 0, MPI_COMM_WORLD);
-	}
-}
-
-static ATYPE recv_b(int peer)
-{
-	int ret;
-	ATYPE buf;
-	if (peer >= 0)
-	{
-		ret = MPI_Recv(&buf, 1, ATYPE_MPI, peer, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);	
-		return buf;
-	}
-	else
-	{
-		return (ATYPE)0;
-	}
-}
-
-static void dist_sum(int rank, int p, int b, int* prefix)
+static void dist_sum(int rank, int p, ATYPE b, ATYPE* prefix)
 {
 	ATYPE buf;
 	*prefix = 0;
@@ -185,18 +178,19 @@ static void dist_sum(int rank, int p, int b, int* prefix)
 		int rpeer = rank - k;
 		int speer = rank + k;
 
-		// send or recv first ?
-		if ((rank / k) & 1)
+		if (speer >= p)
 		{
-			send_b(speer, p, b);
-			buf = recv_b(rpeer);
-		}
-		else
-		{
-			buf = recv_b(rpeer);
-			send_b(speer, p, b);
+			speer = MPI_PROC_NULL;	
 		}
 
+		if (rpeer < 0)
+		{
+			buf = 0;
+			rpeer = MPI_PROC_NULL;
+		}
+
+		int ret = MPI_Sendrecv(&b, 1, ATYPE_MPI, speer, k, &buf, 1, ATYPE_MPI, rpeer, k, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		
 		*prefix += buf;
 		b += buf;
 	}
@@ -208,6 +202,24 @@ static void add_prefix(ATYPE* block, int n, int prefix)
 	{
 		block[i] += prefix;
 	}
+}
+
+static ATYPE* reference(int n)
+{
+	int s;
+	ATYPE* a = genblock(0, n, 1, &s);
+
+	if (s != n)
+	{
+		fail("genblock returned wrong size (%d) for reference (n=%d).", s, n);
+	}
+
+	for (int i = 1; i < n; i++)
+	{
+		a[i] += a[i-1];
+	}
+
+	return a;
 }
 
 

@@ -18,6 +18,7 @@
 static void genmatvec(ATYPE* submat, ATYPE* vector, int n, int size, int vsize, int rank);
 static void allgather(ATYPE* vector, int vsize);
 static void matmult(ATYPE* submat, ATYPE* vector, ATYPE* result, int m, int n);
+static ATYPE* reference(int m, int n);
 
 static void print_perf(int m, int n, int p, double dtime);
 static void print_perf_debug(int m, int n, int p, double dtime);
@@ -86,27 +87,8 @@ int main(int argc, char* argv[])
 	vector = xmalloc(n * sizeof(ATYPE));
 	genmatvec(submat, vector, n, size, vsize, rank);
 	allgather(vector, vsize);
-
-	if ((0 == rank) && debug_flag)
-	{
-		print_array("Vector complete", vector, n);
-		print_array("Matrix row 0", submat, n);
-	}
-
 	result = xmalloc(size * sizeof(ATYPE));
 	matmult(submat, vector, result, size, n);
-
-	/* Gather */
-
-	if (0 == rank)
-	{
-		allresult = xmalloc(m * sizeof(ATYPE));
-		ret = MPI_Gather(result, size, ATYPE_MPI, allresult, size, ATYPE_MPI, 0, MPI_COMM_WORLD);
-	}
-	else
-	{
-		ret = MPI_Gather(result, size, ATYPE_MPI, NULL, size, ATYPE_MPI, 0, MPI_COMM_WORLD);	
-	}
 
 	/* Measure performance */
 
@@ -116,15 +98,41 @@ int main(int argc, char* argv[])
 
 		if (debug_flag)
 		{
-			print_array("Result", allresult, m);
 			print_perf_debug(m, n, p, time_end - time_start);
 		}
 		else
 		{
 			print_perf(m, n, p, time_end - time_start);
 		}
+	}
 
-		free(allresult);
+	/* Gather */
+
+	if (debug_flag)
+	{
+		if (0 == rank)
+		{
+			allresult = xmalloc(m * sizeof(ATYPE));
+			ret = MPI_Gather(result, size, ATYPE_MPI, allresult, size, ATYPE_MPI, 0, MPI_COMM_WORLD);
+			print_array("Result", allresult, m);
+
+			ATYPE* ref = reference(m, n);
+			print_array("Reference", ref, m);
+			if (array_equal(allresult, ref, m) != 0)
+			{
+				printf("SUCCESS\n");
+			}
+			else
+			{
+				printf("EPIC FAILURE\n");
+			}
+			free(ref);
+			free(allresult);
+		}
+		else
+		{
+			ret = MPI_Gather(result, size, ATYPE_MPI, NULL, size, ATYPE_MPI, 0, MPI_COMM_WORLD);	
+		}
 	}
 
 	MPI_Finalize();
@@ -167,6 +175,18 @@ static void matmult(ATYPE* submat, ATYPE* vector, ATYPE* result, int m, int n)
 			result[i] += submat[i*n+j] * vector[j];
 		}
 	}
+}
+
+static ATYPE* reference(int m, int n)
+{
+	ATYPE* mat = xmalloc(m * n * sizeof(ATYPE));
+	ATYPE* vec = xmalloc(n * sizeof(ATYPE));
+	ATYPE* res = xmalloc(m * sizeof(ATYPE));
+	genmatvec(mat, vec, n, m, n, 0);
+	matmult(mat, vec, res, m, n);
+	free(mat);
+	free(vec);
+	return res;
 }
 
 

@@ -17,7 +17,7 @@
 
 static void genmatvec(ATYPE* submat, ATYPE* vector, int m, int n, int size, int rank);
 static void partmult(ATYPE* submat, ATYPE* vector, ATYPE* result, int m, int size);
-static void allgather(ATYPE* block, int n);
+static ATYPE* reference(int m, int n);
 
 static void print_perf(int m, int n, int p, double dtime);
 static void print_perf_debug(int m, int n, int p, double dtime);
@@ -93,18 +93,6 @@ int main(int argc, char* argv[])
 	for (int i = 0; i < p; i++) counts[i] = rsize;
 	ret = MPI_Reduce_scatter(MPI_IN_PLACE, result, counts, ATYPE_MPI, MPI_SUM, MPI_COMM_WORLD);
 
-	/* Gather */
-
-	if (0 == rank)
-	{
-		allresult = xmalloc(m * sizeof(ATYPE));
-		ret = MPI_Gather(result, rsize, ATYPE_MPI, allresult, rsize, ATYPE_MPI, 0, MPI_COMM_WORLD);
-	}
-	else
-	{
-		ret = MPI_Gather(result, rsize, ATYPE_MPI, NULL, rsize, ATYPE_MPI, 0, MPI_COMM_WORLD);	
-	}
-
 	/* Measure performance */
 
 	if (0 == rank)
@@ -113,15 +101,41 @@ int main(int argc, char* argv[])
 
 		if (debug_flag)
 		{
-			print_array("Result", allresult, m);
 			print_perf_debug(m, n, p, time_end - time_start);
 		}
 		else
 		{
 			print_perf(m, n, p, time_end - time_start);
 		}
+	}
 
-		free(allresult);
+	/* Gather */
+
+	if (debug_flag)
+	{
+		if (0 == rank)
+		{
+			allresult = xmalloc(m * sizeof(ATYPE));
+			ret = MPI_Gather(result, rsize, ATYPE_MPI, allresult, rsize, ATYPE_MPI, 0, MPI_COMM_WORLD);
+			print_array("Result", allresult, m);
+
+			ATYPE* ref = reference(m, n);
+			print_array("Reference", ref, m);
+			if (array_equal(allresult, ref, m) != 0)
+			{
+				printf("SUCCESS\n");
+			}
+			else
+			{
+				printf("EPIC FAILURE\n");
+			}
+			free(ref);
+			free(allresult);
+		}
+		else
+		{
+			ret = MPI_Gather(result, rsize, ATYPE_MPI, NULL, rsize, ATYPE_MPI, 0, MPI_COMM_WORLD);	
+		}
 	}
 
 	MPI_Finalize();
@@ -163,9 +177,16 @@ static void partmult(ATYPE* submat, ATYPE* vector, ATYPE* result, int m, int siz
 	}
 }
 
-static void allgather(ATYPE* vector, int vsize)
+static ATYPE* reference(int m, int n)
 {
-	int ret = MPI_Allgather(MPI_IN_PLACE, vsize, ATYPE_MPI, vector, vsize, ATYPE_MPI, MPI_COMM_WORLD);
+	ATYPE* mat = xmalloc(m * n * sizeof(ATYPE));
+	ATYPE* vec = xmalloc(n * sizeof(ATYPE));
+	ATYPE* res = xmalloc(m * sizeof(ATYPE));
+	genmatvec(mat, vec, m, n, n, 0);
+	partmult(mat, vec, res, m, n);
+	free(mat);
+	free(vec);
+	return res;
 }
 
 

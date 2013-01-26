@@ -15,17 +15,17 @@
 #define SEP ";"
 #endif
 
+#define LEFT 1
+#define RIGHT 2
+#define UP 3
+#define DOWN 4
+
 static int index_to_rank(int r, int c, int i, int j);
 static void rank_to_index(int r, int c, int rank, int* i, int* j);
 static void genmatrix(ATYPE* submat, int x, int y, int w, int h, int n);
-static void stencil(ATYPE* source, ATYPE* dest, int w, int h);
+static void stencil_middle(ATYPE* source, ATYPE* dest, int w, int h);
+static void stencil_ring(ATYPE* source, ATYPE* dest, int w, int h);
 static ATYPE* reference(int m, int n);
-
-static void send_row(ATYPE* mat, int w, int y, int peer);
-static void send_col(ATYPE* mat, int w, int h, int x, int peer);
-static void recv_buf(ATYPE* buf, int len, int peer);
-static void buf_to_row(ATYPE* mat, int w, int y, ATYPE* buf);
-static void buf_to_col(ATYPE* mat, int w, int h, int x, ATYPE* buf);
 
 static void print_perf(int m, int n, int r, int c, int p, double dtime);
 static void print_perf_debug(int m, int n, int r, int c, int p, double dtime);
@@ -124,167 +124,35 @@ int main(int argc, char* argv[])
 	ATYPE* dest = xmalloc(w * h * sizeof(ATYPE));
 	genmatrix(source, x, y, w, h, n);
 
-	/* ================ BEGIN OF ALGORITHM ================ */
+	/* ================ COMMUNICATION ================ */
 
-	ATYPE* buffer;
 	int ret;
 
-	// columns stage 1: exchange between nodes (2*k) <--> (2*k+1)
-	buffer = xmalloc(h * sizeof(ATYPE));
+	MPI_Request request[8];
+	MPI_Datatype column_type;
+	MPI_Type_vector(h, 1, w+2, ATYPE_MPI, &column_type);
+	MPI_Type_commit(&column_type);
 
-	if (j & 1) // communicate with left
-	{
-		// there is always a left neighbour -> no check
-		int peer = rank-1;
-		recv_buf(buffer, h, peer);
-		send_col(source, w, h, 0, peer);
-		buf_to_col(source, w, h, -1, buffer);
-	}
-	else // communicate with right
-	{
-		if (j < c-1)
-		{
-			int peer = rank+1;
-			send_col(source, w, h, w-1, peer);
-			recv_buf(buffer, h, peer);
-		}
-		else
-		{
-			memset(buffer, 0, h * sizeof(ATYPE));
-		}
+	int l_peer = rank-1; if (j <= 0)   l_peer = MPI_PROC_NULL;
+	int r_peer = rank+1; if (j >= c-1) r_peer = MPI_PROC_NULL;
+	int u_peer = rank-c; if (i <= 0)   u_peer = MPI_PROC_NULL;
+	int d_peer = rank+c; if (i >= r-1) d_peer = MPI_PROC_NULL;
 
-		buf_to_col(source, w, h, w, buffer);
-	}
+	ret = MPI_Isend(&source[(w+2)+1],       1, column_type, l_peer, LEFT,  MPI_COMM_WORLD, &request[0]);
+	ret = MPI_Isend(&source[(w+2)+w],       1, column_type, r_peer, RIGHT, MPI_COMM_WORLD, &request[1]);
+	ret = MPI_Isend(&source[(w+2)+1],       w, ATYPE_MPI,   u_peer, UP,    MPI_COMM_WORLD, &request[2]);
+	ret = MPI_Isend(&source[h*(w+2)+1],     w, ATYPE_MPI,   d_peer, DOWN,  MPI_COMM_WORLD, &request[3]);
 
-	// columns stage 2: exchange between nodes (2*k-1) <--> (2*k)
-	if (j & 1) // communicate with right
-	{
-		if (j < c-1)
-		{
-			int peer = rank+1;
-			recv_buf(buffer, h, peer);
-			send_col(source, w, h, w-1, peer);
-		}
-		else
-		{
-			memset(buffer, 0, h * sizeof(ATYPE));
-		}
+	ret = MPI_Irecv(&source[(w+2)],         1, column_type, l_peer, RIGHT, MPI_COMM_WORLD, &request[4]);
+	ret = MPI_Irecv(&source[(w+2)+w+1],     1, column_type, r_peer, LEFT,  MPI_COMM_WORLD, &request[5]);
+	ret = MPI_Irecv(&source[1],             w, ATYPE_MPI,   u_peer, DOWN,  MPI_COMM_WORLD, &request[6]);
+	ret = MPI_Irecv(&source[(h+1)*(w+2)+1], w, ATYPE_MPI,   d_peer, UP,    MPI_COMM_WORLD, &request[7]);
 
-		buf_to_col(source, w, h, w, buffer);
-	}
-	else // communicate with left
-	{
-		if (j > 0)
-		{
-			int peer = rank-1;
-			send_col(source, w, h, 0, peer);
-			recv_buf(buffer, h, peer);
-		}
-		else
-		{
-			memset(buffer, 0, h * sizeof(ATYPE));
-		}
+	/* ================ CALCULATION ================ */
 
-		buf_to_col(source, w, h, -1, buffer);
-	}
-
-	free(buffer);
-	buffer = xmalloc(w * sizeof(ATYPE));
-
-	// rows stage 1: exchange between nodes (2*k) <--> (2*k+1) [row index]
-	if (i & 1) // communicate with upper
-	{
-		// there is always an upper neighbour -> no check
-		int peer = rank-c;
-		recv_buf(buffer, w, peer);
-		send_row(source, w, 0, peer);
-		buf_to_row(source, w, -1, buffer);
-	}
-	else // communicate with lower
-	{
-		if (i < r-1)
-		{
-			int peer = rank+c;
-			send_row(source, w, h-1, peer);
-			recv_buf(buffer, w, peer);
-		}
-		else
-		{
-			memset(buffer, 0, w * sizeof(ATYPE));
-		}
-
-		buf_to_row(source, w, h, buffer);
-	}
-
-	// rows stage 2: exchange between nodes (2*k-1) <--> (2*k) [row index]
-	if (i & 1) // communicate with lower
-	{
-		if (i < r-1)
-		{
-			int peer = rank+c;
-			recv_buf(buffer, w, peer);
-			send_row(source, w, h-1, peer);
-		}
-		else
-		{
-			memset(buffer, 0, w * sizeof(ATYPE));
-		}
-
-		buf_to_row(source, w, h, buffer);
-	}
-	else // communicate with upper
-	{
-		if (i > 0)
-		{
-			int peer = rank-c;
-			send_row(source, w, 0, peer);
-			recv_buf(buffer, w, peer);
-		}
-		else
-		{
-			memset(buffer, 0, w * sizeof(ATYPE));
-		}
-
-		buf_to_row(source, w, -1, buffer);
-	}
-
-	free(buffer);
-
-	// ACTION!
-
-	stencil(source, dest, w, h);
-
-	/* ========== GATHER =========== */
-
-	if (0 == rank)
-	{
-		// TODO: use MPI gather operations
-		result = xmalloc(m * n * sizeof(ATYPE));
-
-		for (int yy = 0; yy < h; yy++)
-		for (int xx = 0; xx < w; xx++)
-		{
-			result[yy*n+xx] = dest[yy*w+xx];
-		}
-
-		for (int peer = 1; peer < p; peer++)
-		{
-			MPI_Recv(dest, w*h, ATYPE_MPI, peer, peer, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-			int pi, pj;
-			rank_to_index(r, c, peer, &pi, &pj);
-
-			for (int yy = 0; yy < h; yy++)
-			for (int xx = 0; xx < w; xx++)
-			{
-				result[(yy+pi*h)*n+(xx+pj*w)] = dest[yy*w+xx];
-			}
-		}
-	}
-	else
-	{
-		MPI_Send(dest, w*h, ATYPE_MPI, 0, rank, MPI_COMM_WORLD);
-	}
+	stencil_middle(source, dest, w, h);
+	ret = MPI_Waitall(8, request, MPI_STATUS_IGNORE);
+	stencil_ring(source, dest, w, h);
 
 	/* ========== PERFORMANCE MEASUREMENTS =========== */
 
@@ -302,23 +170,56 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	/* ========== OUTPUT =========== */
+	/* ================ GATHER ================ */
 
-	if (debug_flag && (0 == rank))
+	if (debug_flag)
 	{
-		//print_matrix("Result", matrix, m, n);
-		ATYPE* refmat = reference(m, n);
-		if (matrices_equal(result, refmat, m, n) != 0)
+		if (0 == rank)
 		{
-			printf("SUCCESS\n");
+			// TODO: use MPI gather operations
+			result = xmalloc(m * n * sizeof(ATYPE));
+
+			for (int yy = 0; yy < h; yy++)
+			for (int xx = 0; xx < w; xx++)
+			{
+				result[yy*n+xx] = dest[yy*w+xx];
+			}
+
+			for (int peer = 1; peer < p; peer++)
+			{
+				MPI_Recv(dest, w*h, ATYPE_MPI, peer, peer, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+				int pi, pj;
+				rank_to_index(r, c, peer, &pi, &pj);
+
+				for (int yy = 0; yy < h; yy++)
+				for (int xx = 0; xx < w; xx++)
+				{
+					result[(yy+pi*h)*n+(xx+pj*w)] = dest[yy*w+xx];
+				}
+			}
+
+			/* ========== OUTPUT =========== */
+
+			//print_matrix("Result", matrix, m, n);
+			ATYPE* refmat = reference(m, n);
+			if (matrices_equal(result, refmat, m, n) != 0)
+			{
+				printf("SUCCESS\n");
+			}
+			else
+			{
+				printf("EPIC FAILURE\n");
+			}
+			free(refmat);
 		}
 		else
 		{
-			printf("EPIC FAILURE\n");
+			MPI_Send(dest, w*h, ATYPE_MPI, 0, rank, MPI_COMM_WORLD);
 		}
-		free(refmat);
 	}
 
+	MPI_Type_free(&column_type);
 	free(result);
 	free(source);
 	free(dest);
@@ -367,20 +268,43 @@ static void genmatrix(ATYPE* submat, int x, int y, int w, int h, int n)
 		}
 		else
 		{
-			submat[ii] = seq + 1; // (ATYPE) ((13L * seq * seq + seq * 17L + 4L) % 51L);
+			// submat[ii] = (ATYPE) ((13L * seq * seq + seq * 17L + 4L) % 51L);
+			submat[ii] = seq + 1;
+			// submat[ii] = ((seq % 3) == 0);
+			// if (xx == 1) submat[ii] = 1;
 		}
 	}
 }
 
-static void stencil(ATYPE* source, ATYPE* dest, int w, int h)
+static void stencil_middle(ATYPE* source, ATYPE* dest, int w, int h)
 {
 	// NOTE: source is 2 rows and 2 columns larger than dest. re-center!
-	for (int y = 0; y < h; y++)
-	for (int x = 0; x < w; x++)
+	for (int y = 1; y < h-1; y++)
+	for (int x = 1; x < w-1; x++)
 	{
 		int d = y * w + x;
 		int s = (y+1) * (w+2) + (x+1);
 		dest[d] = (source[s-1] + source[s+1] + source[s-(w+2)] + source[s+(w+2)]) / 4;
+	}
+}
+
+static void stencil_ring(ATYPE* source, ATYPE* dest, int w, int h)
+{
+	// NOTE: source is 2 rows and 2 columns larger than dest. re-center!
+	for (int y = 0; y < h; y++)
+	{
+		int s = (y+1)*(w+2)+1;
+		int x = w-1;
+		dest[y*w] = (source[s-1] + source[s+1] + source[s-(w+2)] + source[s+(w+2)]) / 4;
+		dest[y*w+x] = (source[s+x-1] + source[s+x+1] + source[s+x-(w+2)] + source[s+x+(w+2)]) / 4;
+	}
+
+	for (int x = 0; x < w; x++)
+	{
+		int s1 = (w+2)+x+1;
+		int s2 = h*(w+2)+x+1;
+		dest[x] = (source[s1-1] + source[s1+1] + source[s1-(w+2)] + source[s1+(w+2)]) / 4;
+		dest[(h-1)*w+x] = (source[s2-1] + source[s2+1] + source[s2-(w+2)] + source[s2+(w+2)]) / 4;
 	}
 }
 
@@ -389,60 +313,11 @@ static ATYPE* reference(int m, int n)
 	ATYPE* source = xmalloc((m+2) * (n+2) * sizeof(ATYPE));
 	ATYPE* dest = xmalloc(m * n * sizeof(ATYPE));
 	genmatrix(source, 0, 0, n, m, n);
-	stencil(source, dest, n, m);
-	//print_matrix("Reference result", dest, m, n);
+	stencil_middle(source, dest, n, m);
+	stencil_ring(source, dest, n, m);
 	free(source);
 	return dest;
 }
-
-
-static void send_row(ATYPE* mat, int w, int y, int peer)
-{
-	// NOTE: mind the 1-column, 1-row margin on mat
-	ATYPE* buf = &mat[(y+1)*(w+2)+1];
-	int ret = MPI_Send(buf, w, ATYPE_MPI, peer, 0, MPI_COMM_WORLD);
-}
-
-static void send_col(ATYPE* mat, int w, int h, int x, int peer)
-{
-	// NOTE: mind the 1-column, 1-row margin on mat
-	ATYPE* buf = xmalloc(h * sizeof(ATYPE));
-	
-	for (int y = 0; y < h; y++)
-	{
-		buf[y] = mat[(y+1)*(w+2)+x+1];
-	}
-
-	int ret = MPI_Send(buf, h, ATYPE_MPI, peer, 0, MPI_COMM_WORLD);
-
-	free(buf);
-}
-
-static void recv_buf(ATYPE* buf, int len, int peer)
-{
-	int ret = MPI_Recv(buf, len, ATYPE_MPI, peer, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-}
-
-static void buf_to_row(ATYPE* mat, int w, int y, ATYPE* buf)
-{
-	// NOTE: y here is still the row index of the block, but as
-	//       it will likely point to the margin rows of the 'source'
-	//       matrix, the values of -1 and h are legitimate.
-	ATYPE* begin = &mat[(y+1)*(w+2)+1];
-	memcpy(begin, buf, w * sizeof(ATYPE));
-}
-
-static void buf_to_col(ATYPE* mat, int w, int h, int x, ATYPE* buf)
-{
-	// NOTE: x here is still the column index of the block, but as
-	//       it will likely point to the margin rows of the 'source'
-	//       matrix, the values of -1 and w are legitimate.
-	for (int y = 0; y < h; y++)
-	{
-		mat[(y+1)*(w+2)+x+1] = buf[y];
-	}
-}
-
 
 static void print_perf(int m, int n, int r, int c, int p, double dtime)
 {
