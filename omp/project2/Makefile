@@ -1,4 +1,4 @@
-CFLAGS=-I../../include --std=c99 -fopenmp -Wall
+CFLAGS=-I../../include --std=gnu99 -fopenmp -Wall
 UTIL_O=../../include/util/util.o
 UTILS=$(UTIL_O)
 
