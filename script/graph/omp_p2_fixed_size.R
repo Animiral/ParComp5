@@ -1,5 +1,5 @@
 args <- commandArgs(trailingOnly=TRUE)
-print(paste("OMP P2 Fixed Size, ", args, sep=""))
+print(paste("omp_p2_fixed_size.R, Args ", args, sep=""))
 rawdata <- read.csv(args[1], header = FALSE, sep=";")
 names(rawdata) <- c('m', 'n', 'threads', 'time')
 data <- subset(rawdata, select=c(n, m, threads, time))
@@ -14,12 +14,12 @@ ms <- unique(data$m)
 counter <- 0
 points <- vector()
 
-for (i in 1:length(ns)) {
-	filterN_data <- subset(data, data$n == ns[i])
-	for(j in 1:length(ms)) {
-		filterM_data <- subset(filterN_data, filterN_data$m == ms[j])
+for (i in 1:length(m)) {
+	filterM_data <- subset(data, data$m == ms[i])
+	for(j in 1:length(ns)) {
+		filterN_data <- subset(filterM_data, filterM_data$n == ns[j])
 		counter <- counter+1
-		lines(filterM_data$threads, filterM_data$time, col=(counter))
+		lines(filterN_data$threads, filterN_data$time, col=(counter))
 		points <- append(points, paste(i, ", ", j, sep=""))
 	}
 }

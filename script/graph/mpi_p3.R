@@ -19,5 +19,5 @@ jpeg(args[5], width=1024, height=1024)
 plot(fFilter1$p, fFilter1$time, type="o", xlab="Processes", ylab="Time", col="blue")
 lines(fFilter2$p, fFilter2$time, type="o", col="red")
 
-#legend(1, max(fFilter2$time, fFilter1$time), ps, c("Reduce Scatter", "All Gather"), col=c("blue", "red"), lty=1, pch=1)
+legend(1, max(fFilter2$time, fFilter1$time), c(args[1], args[2]), col=c("blue", "red"), lty=1, pch=1)
 dev.off()
