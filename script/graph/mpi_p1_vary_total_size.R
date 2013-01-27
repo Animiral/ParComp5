@@ -1,5 +1,5 @@
 args <- commandArgs(trailingOnly=TRUE)
-print(paste("Vary Size of Process, ", args, sep=""))
+print(paste("mpi_p1_vary_total_size.R, Args ", args, sep=""))
 rawdata <- read.csv(args[1], header = FALSE, sep=";")
 names(rawdata) <- c('m', 'n', 'r', 'c', 'p', 'dtime')
 filtered <- subset(rawdata, p == args[2])
@@ -26,5 +26,7 @@ for (i in 1:length(uniqueN)) {
 	}
 
 }
+
+#legend(1, max(filtered$n)
 
 dev.off()

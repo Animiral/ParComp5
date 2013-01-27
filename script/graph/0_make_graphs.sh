@@ -116,7 +116,7 @@ do
 	for n in $($numgen_n)
 	do
 
-		./script/graph/mpi_p1_vary_process_distribution.sh "./result/$mpi1File" "$m" "$n" "$t" "$target/mpi_pi1_vary_process_$m_$n_$t.jpg"
+		./script/graph/mpi_p1_vary_process_distribution.sh "./result/$mpi1File" "$m" "$n" "$t" "$target/mpi_p1_vary_process_$m_$n_$t.jpg"
 
 	done
 
