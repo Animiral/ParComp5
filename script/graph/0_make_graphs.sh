@@ -14,8 +14,8 @@ mkdir -p graphs
 
 
 ### OMP P1 ###
-numgen_n='./script/numgen/numgen 100 200'       # input size
-numgen_t='./script/numgen/numgen 1 16'          # thread count
+numgen_n='./script/numgen/numgen 1 250000000'       # input size
+numgen_t='./script/numgen/numgen 1 2048'            # thread count
 recFile=$(ls ./result/ | grep -E *omp\-p1\-recursive.csv)
 iteFile=$(ls ./result/ | grep -E *omp\-p1\-iterative.csv)
 hilFile=$(ls ./result/ | grep -E *omp\-p1\-hillis\-steele.csv)
@@ -44,9 +44,9 @@ done
 
 
 ### OMP P2 ###
-numgen_m='./script/numgen/numgen 10 30'       # input size m
-numgen_n='./script/numgen/numgen 10 30'       # input size n
-numgen_t='./script/numgen/numgen 1 16'          # thread count
+numgen_m='./script/numgen/numgen 1 30000'       # input size m
+numgen_n='./script/numgen/numgen 1 30000'       # input size n
+numgen_t='./script/numgen/numgen 1 2048'          # thread count
 
 
 omp2File=$(ls ./result/ | grep -E *omp\-p2\-matmult.csv)
@@ -75,8 +75,8 @@ done
 
 ### CILK ###
 
-numgen_n='./script/numgen/numgen 100 200'       # input size
-numgen_t='./script/numgen/numgen 1 16'          # thread count
+numgen_n='./script/numgen/numgen 1 250000000'       # input size
+numgen_t='./script/numgen/numgen 1 2048'          # thread count
 
 cilkFile=$(ls ./result/ | grep -E *cilk\-prefix\-sums.csv)
 
@@ -98,10 +98,10 @@ done
 
 
 ## MPI Project 1 ###
-numgen_m='./script/numgen/numgen 256 256'      # input rows
-numgen_n='./script/numgen/numgen 256 256'      # input columns
-numgen_c='./script/numgen/numgen 1 5'          # nr of block columns
-numgen_t='./script/numgen/numgen 1 5'          # thread count
+numgen_m='./script/numgen/numgen 1 30000'      # input rows
+numgen_n='./script/numgen/numgen 1 30000'      # input columns
+numgen_c='./script/numgen/numgen 1 30000'      # nr of block columns
+numgen_t='./script/numgen/numgen 1 2048'       # thread count
 
 mpi1File=$(ls ./result/ | grep -E *mpi\-p1\-stencil.csv)
 
@@ -135,9 +135,9 @@ mpi2File=$(ls ./result/ | grep -E *mpi\-p2\-prefix\-sums\.csv)
 
 ### MPI Project 3 ###
 
-numgen_m='./script/numgen/numgen 256 260'      # result size
-numgen_n='./script/numgen/numgen 256 260'      # vector size
-numgen_t='./script/numgen/numgen 1 5'          # thread count
+numgen_m='./script/numgen/numgen 1 30000'      # result size
+numgen_n='./script/numgen/numgen 1 30000'      # vector size
+numgen_t='./script/numgen/numgen 1 2048'          # thread count
 
 mpi3aFile=$(ls ./result/ | grep -E *mpi\-p3\-allgather.csv)
 mpi3bFile=$(ls ./result/ | grep -E *mpi\-p3\-reduce\-scatter.csv)

@@ -22,8 +22,9 @@ fi
 
 mkdir -p $RESULT_DIR
 
-numgen_m='./script/numgen/numgen 100 500'       # input size
-numgen_n='./script/numgen/numgen 100 300'       # vector size
+numgen_p='./script/numgen/numgen 1 250000000'   # prefix input size
+numgen_m='./script/numgen/numgen 1 30000'       # input size
+numgen_n='./script/numgen/numgen 1 30000'       # vector size
 
 csv_stencil="$RESULT_DIR/$TIME-reference-stencil.csv"
 csv_prefix="$RESULT_DIR/$TIME-reference-prefix.csv"
@@ -33,14 +34,19 @@ touch $csv_stencil
 touch $csv_prefix
 touch $csv_matmult
 
+for p in $($numgen_p)
+do
+	echo "[$SELF] RUN prefix n=$p"
+	./reference/prefix $p >> $csv_prefix
+
+done
+
+
 for m in $($numgen_m)
 do
 
 for n in $($numgen_n)
 do
-	echo "[$SELF] RUN prefix n=$m"
-	./reference/prefix $m >> $csv_prefix
-
 	echo "[$SELF] RUN matmult m=$m n=$n"
 	./reference/matmult $m $n >> $csv_matmult
 

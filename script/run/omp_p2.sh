@@ -21,9 +21,9 @@ fi
 
 mkdir -p $RESULT_DIR
 
-numgen_m='./script/numgen/numgen 10 70'       # input size m
-numgen_n='./script/numgen/numgen 10 70'       # input size n
-numgen_t='./script/numgen/numgen 1 32'          # thread count
+numgen_m='./script/numgen/numgen 1 30000'       # input size m
+numgen_n='./script/numgen/numgen 1 30000'       # input size n
+numgen_t='./script/numgen/numgen 1 2048'          # thread count
 
 for x in $EXES
 do

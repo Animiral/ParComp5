@@ -6,11 +6,15 @@
 #include "util/util.h"
 
 static void genpow2(int lower, int upper);
-static void genprime(int lower, int upper);
+static void genprime(int lower, int upper, int nth);
 static void gendecimeres(int lower, int upper);
 
 static void* xmalloc(int size);
 static void fail(const char* format, ...);
+static void output(int);
+
+static int filter;
+static int every_nth;
 
 int main(int argc, char* argv[])
 {
@@ -28,8 +32,11 @@ int main(int argc, char* argv[])
 		fail("Invalid boundaries: %d to %d\n", lower, upper);
 	}
 
+	filter = 0;
+	every_nth = 1;
+
 	genpow2(lower, upper);
-	genprime(lower, upper); // every 50th prime
+	genprime(lower, upper, 50 * every_nth); // every 50th prime
 	gendecimeres(lower, upper);
 
 	return 0;
@@ -42,12 +49,12 @@ static void genpow2(int lower, int upper)
 	{
 		if (i >= lower)
 		{
-			printf("%d ", i); // emit po2
+			output(i); // emit po2
 		}
 	}
 }
 
-static void genprime(int lower, int upper)
+static void genprime(int lower, int upper, int nth)
 {
 	int c = 0;
 
@@ -62,11 +69,9 @@ static void genprime(int lower, int upper)
 
 		if (i >= lower)
 		{
-			if ((c % 50) == 0)
-			{
-				printf("%d ", i); // emit prime
-			}
-			c++;
+			if (c++ > 50) return;
+
+			output(i); // emit prime
 		}
 
 		for (int j = i; j <= upper; j += i)
@@ -87,11 +92,20 @@ static void gendecimeres(int lower, int upper)
 		{
 			if ((i*base >= lower) && (i*base <= upper))
 			{
-				printf("%d ", i * base);
+				output(i * base);
 			}
 		}
 		base *= 10;
 	}
+}
+
+static void output(int number)
+{
+	if ((filter % every_nth) == 0)
+	{
+		printf("%d ", number);
+	}
+	filter++;
 }
 
 

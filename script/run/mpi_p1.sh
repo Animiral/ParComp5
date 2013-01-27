@@ -21,10 +21,10 @@ fi
 
 mkdir -p $RESULT_DIR
 
-numgen_m='./script/numgen/numgen 256 256'      # input rows
-numgen_n='./script/numgen/numgen 256 256'      # input columns
-numgen_c='./script/numgen/numgen 1 5'          # nr of block columns
-numgen_t='./script/numgen/numgen 1 5'          # thread count
+numgen_m='./script/numgen/numgen 1 30000'      # input rows
+numgen_n='./script/numgen/numgen 1 30000'      # input columns
+numgen_c='./script/numgen/numgen 1 30000'          # nr of block columns
+numgen_t='./script/numgen/numgen 1 2048'          # thread count
 
 for x in $EXES
 do
