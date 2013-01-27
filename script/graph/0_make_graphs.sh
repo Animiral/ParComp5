@@ -49,7 +49,7 @@ numgen_n='./script/numgen/numgen 10 30'       # input size n
 numgen_t='./script/numgen/numgen 1 16'          # thread count
 
 
-omp2File=$(ls ./result/ | grep -E *omp\-p2-matmult.csv)
+omp2File=$(ls ./result/ | grep -E *omp\-p2\-matmult.csv)
 for m in $($numgen_m)
 do
 

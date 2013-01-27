@@ -1,4 +1,7 @@
-\documentclass[11pt, draft]{article}
+\documentclass[11pt]{article}
+
+\usepackage{listings}
+\usepackage{amsmath}
 
 \begin{document}
 \title{Parallel Computing Projects\\ Group 5}
@@ -7,6 +10,8 @@
 \maketitle
 \newpage
 \tableofcontents
+
+\newpage
 
 \section{Task}
 Short report, 1-3 pages per project plus performance plots (1-5 pages)\\
@@ -19,17 +24,37 @@ Discuss:
 \end{itemize}
 
 
-\section[OpenMP]{Projects with OpenMP}
+\section{OpenMP: Prefix Sums}
+\begin{figure}[h]
+\caption{Some beautiful code right here}
+\begin{lstlisting}[language=C,frame=single]
+//The code should be here.
+\end{lstlisting}
+\end{figure}
+
+
 
 \subsection{Recursive Implementation}
 
-\subsection{...}
+\subsection{Iterative Implementation}
 
 \subsection{Hillis-Steele Implementation}
 
-\section[cilk]{Projects with cilk}
+\subsection{Findings}
 
-\section[MPI]{Projects with MPI}
+
+
+\section{OpenMP: Matrix / Vector Multiplication}
+False Sharing!
+
+
+\section{Cilk: Task-parallel Prefix-Sums}
+
+\section{MPI: Stencil Operations}
+
+\section{MPI: Matrix / Vector Multiplication}
+
+\section{MPI: Prefix Sums}
 
 
 \end{document}
