@@ -43,7 +43,7 @@ do
 		echo "[$SELF] RUN $prog n=$n c=$c t=$t"
 		# TODO: number of threads/nodes
 		# use Cilk_active_size, Self from <cilk.h>
-		$x --nproc $t $n 1 $c >> $csv # || echo "FAIL"
+		$x --nproc $t $n $c >> $csv # || echo "FAIL"
 
 	done
 

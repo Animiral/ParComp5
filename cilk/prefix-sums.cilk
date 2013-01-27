@@ -1,7 +1,9 @@
 #include <cilk-lib.cilkh>
 #include <stdio.h>
 #include <stdlib.h>
-#include <alloca.h>
+#include <string.h>
+#include <errno.h>
+#include <stdarg.h>
 #include "util/util.h"
 
 #ifndef ATYPE
@@ -12,54 +14,89 @@
 #define SEP ";"
 #endif
 
+static ATYPE* geninput(int n);
 cilk static void benchmark(ATYPE data[], int n, int chunk, double* dtime);
 cilk static void scan(ATYPE a[], int n, int chunk);
 cilk static void add_up(ATYPE* a, ATYPE* b, int i, int n);
 cilk static void reduce_down(ATYPE* a, ATYPE* b, int i, int n);
+static ATYPE* reference(int n);
+
+static void* xmalloc(int size);
+static int array_equal(ATYPE* a1, ATYPE* a2, int n);
 static void print_array(const char* caption, ATYPE a[], int n);
-static void print_perf(int n, int t, int chunk, double dtime);
+static void print_perf(int n, int chunk, int t, double dtime);
+static void print_perf_debug(int n, int chunk, int t, double dtime);
+static void fail(const char* format, ...);
 
 cilk int main(int argc, char* argv[])
 {
 	int debug_flag;
 	int n;
-	int t;
 	int chunk;
-	int i;
 	ATYPE* data;
+	ATYPE* ref;
 	double dtime;
 
-	if (parse_args(argc, argv, &debug_flag, "input size", &n, "threads", &t, "chunk size", &chunk, NULL, NULL) != 0)
+	if (parse_args(argc, argv, &debug_flag, "input size", &n, "chunk size", &chunk, NULL, NULL, NULL, NULL) != 0)
 	{
-		exit(1);
+		fail("Error while parsing args.");
 	}
 
-	data = malloc(n * sizeof(ATYPE));
+	data = geninput(n);
 
-	if ((n < 1) || (t < 1))
+	if (n < 1)
 	{
-		fprintf(stderr, "%s\n", "bad input?");
-		exit(1);
+		fail("Input size n must be positive.");
 	}
-
-	for (i = 0; i < n; i++) 
-	{
-		data[i] = (i % 3 == 0);
-	}
-
-	if (debug_flag) print_array("input", data, n);
 
 	spawn benchmark(data, n, chunk, &dtime);
 	sync;
 
-	if (debug_flag) printf("Time: %f seconds.\n", dtime);
-	if (debug_flag) print_array("output", data, n);
-	else print_perf(n, t, chunk, dtime);
+	if (debug_flag)
+	{
+		/* ========== OUTPUT =========== */
 
+		print_array("Result", data, n);
+		print_perf_debug(n, chunk, Cilk_active_size, dtime);
+
+		ref = reference(n);
+
+		if (array_equal(data, ref, n))
+		{
+			printf("SUCCESS\n");
+		}
+		else
+		{
+			printf("EPIC FAILURE\n");
+		}
+
+		free(ref);
+	}
+	else
+	{
+		print_perf(n, chunk, Cilk_active_size, dtime);
+	}
+
+	free(data);
 	return 0;
 }
 
-cilk static void benchmark(ATYPE data[], int n, int chunk, double* dtime)
+
+static ATYPE* geninput(int n)
+{
+	int i;
+	ATYPE* a = xmalloc(n * sizeof(ATYPE));
+
+	for (i = 0; i < n; i++)
+	{
+		// block[i] = (global_i % 3) == 0;
+		a[i] = i + 1;
+	}
+
+	return a;
+}
+
+cilk static void benchmark(ATYPE* data, int n, int chunk, double* dtime)
 {
 	Cilk_time stime;
 	Cilk_time etime;
@@ -72,36 +109,36 @@ cilk static void benchmark(ATYPE data[], int n, int chunk, double* dtime)
 	*dtime = Cilk_wall_time_to_sec(etime - stime);
 }
 
-cilk static void scan(ATYPE in[], int length, int chunk)
+cilk static void scan(ATYPE* in, int length, int chunk)
 {
 	int start;
 	int count;
-	int l_2;
+	int half;
 	ATYPE* out;
 
 	if (length <= 1) return;
 
-	l_2 = length/2;
-	out = alloca(sizeof(ATYPE) * l_2);
+	half = length/2;
+	out = Cilk_alloca(sizeof(ATYPE) * half);
 
-	for (start = 0; start < l_2; start += chunk) 
+	for (start = 0; start < half; start += chunk) 
 	{
 		count = chunk;
-		if (start + chunk > l_2) count = l_2-start;
+		if (start + chunk > half) count = half-start;
 
 		spawn add_up(in, out, start, count);
 	}
 	sync;
 
-	spawn scan(out, l_2, chunk);
+	spawn scan(out, half, chunk);
 	sync;
 
 	in[1] = out[0];
 
-	for (start = 1; start < l_2; start += chunk) 
+	for (start = 1; start < half; start += chunk) 
 	{
 		count = chunk;
-		if (start + chunk > l_2) count = l_2-start;
+		if (start + chunk > half) count = half-start;
 
 		spawn reduce_down(in, out, start, count);
 	}
@@ -109,7 +146,7 @@ cilk static void scan(ATYPE in[], int length, int chunk)
 
 	if (length % 2)
 	{
-		in[length-1] = out[l_2-1] + in[length-1];
+		in[length-1] = out[half-1] + in[length-1];
 	}
 }
 
@@ -132,7 +169,31 @@ cilk static void reduce_down(ATYPE* a, ATYPE* b, int i, int n)
 	}
 }
 
-void print_array(const char* caption, ATYPE a[], int n)
+static ATYPE* reference(int n)
+{
+	int i;
+	ATYPE* a = geninput(n);
+
+	for (i = 1; i < n; i++)
+	{
+		a[i] += a[i-1];
+	}
+
+	return a;
+}
+
+
+static void* xmalloc(int size)
+{
+	void* ret = malloc(size);
+	if (NULL == ret)
+	{
+		fail("MALLOC ERROR: %s\n", strerror(errno));
+	}
+	else return ret;
+}
+
+static void print_array(const char* caption, ATYPE a[], int n)
 {
 	int i;
 	printf("%s:\n", caption);
@@ -143,7 +204,35 @@ void print_array(const char* caption, ATYPE a[], int n)
 	printf("\n");
 }
 
-static void print_perf(int n, int t, int chunk, double dtime)
+static int array_equal(ATYPE* a1, ATYPE* a2, int n)
 {
-	printf("%d%s%d%s%d%s%f\n", n, SEP, t, SEP, chunk, SEP, dtime);
+	int i;
+	for (i = 0; i < n; i++)
+	{
+		if (a1[i] != a2[i]) return 0;
+	}
+
+	return 1;
+}
+
+static void print_perf(int n, int chunk, int t, double dtime)
+{
+	printf("%d%s%d%s%d%s%f\n", n, SEP, chunk, SEP, t, SEP, dtime);
+}
+
+static void print_perf_debug(int n, int chunk, int t, double dtime)
+{
+	printf("Threads: %d\n", t);
+	printf("Input size: %d\n", n);
+	printf("Chunk size: %d\n", chunk);
+	printf("Time: %f seconds\n", dtime);
+}
+
+static void fail(const char* format, ...)
+{
+	va_list args;
+    va_start(args, format);
+    vfprintf(stderr, format, args);
+    va_end(args);
+	exit(1);
 }
