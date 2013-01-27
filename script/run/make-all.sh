@@ -14,3 +14,4 @@ pushd ./cilk && make; popd
 pushd ./mpi/project1 && make; popd
 pushd ./mpi/project2 && make; popd
 pushd ./mpi/project3 && make; popd
+pushd ./reference/ && make; popd
