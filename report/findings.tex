@@ -48,7 +48,7 @@ For all tests, we employed a deterministic number generator in various configura
 \end{enumerate}
 All tests were performed on Jupiter and Saturn. During testing, we noticed that performance was poor in several circumstances due to other processes disturbing the execution.
 
-
+\newpage
 \section{OpenMP: Prefix Sums}
 For this project, we decided to implement an OpenMP program as opposed to a pthread implementation. We chose this particular option due to the simpler handling of OpenMP. All three parallel algorithms have been programmed in separate programs, each according to the guidelines found in the lecture script. The data type was generified using a C defintion ($ATYPE$). The programs accepts the arguments ($n, t$) to set the size of the problem and number of threads to be used.
 All programs (save the sequential reference implementation) use \emph{Performance Counters} to track work:
@@ -62,7 +62,7 @@ We found that all algorithms showed similar performance in general. The data sho
 
 Testing was performed using scripts testing various array sizes provided by the described number generator. The array content wass calculated using \emph{modulo} operations. A reference solution was integrated for debugging purposed to validate the correctness of the results. While testing with extremely large inputs ($> ca. 123'000'000$) we encountered segmentation faults that could not be remedied.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \label{omp_prefix_recursive_code}
 \caption{Recursive Prefix Sums in OMP}
 \begin{lstlisting}
@@ -98,7 +98,7 @@ static void scan(ATYPE a[], int n, int* plus_ops, int* acc_ops)
 \end{figure}
 
 
-\begin{figure}[h]
+\begin{figure}[H]
 \label{omp_prefix_iterative_code}
 \caption{Iterative Prefix Sums in OMP}
 
@@ -134,7 +134,7 @@ static void scan(ATYPE a[], int n, int* plus_ops, int* acc_ops)
 \end{figure}
 
 
-\begin{figure}[h]
+\begin{figure}[H]
 \label{omp_prefix_hillis_steele_code}
 \caption{Hillis-Steele Prefix Sums in OMP}
 
@@ -167,31 +167,45 @@ static void scan(ATYPE** in, int n, int* plus_ops, int* acc_ops)
 \end{lstlisting}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[H]
+\centering
 \caption{OMP: Comparison of Algorithms at n=200'000. Red = Recursive, Blue = Iterative, 
 Green = Hillis-Steele, Yellow = Total Sum}
 
-
+\includegraphics[scale=0.4]{candidate-graphs/omp_p1_compare_200000.jpg}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[H]
+\centering
 \caption{OMP: Comparison of Algorithms at n=10'000. Red = Recursive, Blue = Iterative, 
 Green = Hillis-Steele, Yellow = Total Sum}
+
+\includegraphics[scale=0.4]{candidate-graphs/omp_p1_compare_10000.jpg}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[H]
+\centering
 \caption{OMP: Comparison of Algorithms at n=256. Red = Recursive, Blue = Iterative, 
 Green = Hillis-Steele, Yellow = Total Sum}
+
+\includegraphics[scale=0.4]{candidate-graphs/omp_p1_compare_256.jpg}
 \end{figure}
 
-\begin{figure}
-\caption{OMP: Recursive Algorithm. Fixed Number of Threads (2000)}
+\begin{figure}[H]
+\centering
+\caption{OMP: Iterative Algorithm. Fixed Number of Threads (2000)}
+
+\includegraphics[scale=0.4]{candidate-graphs/omp_p1_iterative_length_2000.jpg}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[H]
+\centering
 \caption{OMP: Sequential Algorithm. Fixed Number of Threads (1)}
+
+\includegraphics[scale=0.4]{candidate-graphs/omp_p1_length_time_1_XYZ.jpg}
 \end{figure}
 
+\newpage
 \section{OpenMP: Matrix / Vector Multiplication}
 This implementation was also done in OpenMP rather than using pthreads. When calling the program, a tuple $(n, m, t)$ is required to set the dimensions of the matrix and the vector, as well as the amount of threads that should be used to calculate the problem. Invalid input (negative threads, sizes) concludes the program with a message.
 Once given adequate input, the program generates a matrix \& vector based on the transmitted size dimensions, once more using \emph{modulo} operations.
@@ -201,7 +215,7 @@ The implementation of the algorithm is located in figure \ref{omp_matmult_code}.
 Our observations (please see graphs below) have shown that certain column sizes are affected by false sharing (X, Y, Z). For \verb=schedule(static, 1)= (One row per thread), we found XYZ.
 
 
-\begin{figure}
+\begin{figure}[H]
 \label{omp_matmult_code}
 \caption{Matrix / Vector Multiplication in OMP}
 \begin{lstlisting}
@@ -223,8 +237,15 @@ static void matmult(ATYPE mat[], ATYPE vec[], ATYPE* res, int m, int n)
 \end{lstlisting}
 \end{figure}
 
+\begin{figure}[H]
+\centering
+\caption{OMP: Prefix Sums Performance}
+
+\includegraphics[scale=0.3]{candidate-graphs/omp_p2_fixed_size_16.jpg}
+\end{figure}
 
 
+\newpage
 \section{Cilk: Task-parallel Prefix-Sums}
 We elected to implement the prefix-sum project for the Cilk category due to the experience gained with the OMP implementations. Again the program requires an input of $n, c, t$ to determine the \emph{total size}, \emph{chunk size} and the number of threads (of course exiting on invalid input). The code in figure \ref{cilk_prefix_code} shows the core of the implemented algorithm.
 
@@ -236,7 +257,7 @@ Speed up (in Cilk) (compared OMP \& MPI)
 
 
 
-\begin{figure}
+\begin{figure}[H]
 \label{cilk_prefix_code}
 \caption{Task-parallel Prefix-Sums in Cilk}
 \begin{lstlisting}
@@ -284,6 +305,32 @@ cilk static void scan(ATYPE* in, int length, int chunk)
 
 \end{figure}
 
+\begin{figure}[H]
+\centering
+\caption{Cilk: Prefix Sum Performance, n=500}
+
+\includegraphics[scale=0.3]{candidate-graphs/cilk_by_threads_500.jpg}
+
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\caption{Cilk: Prefix Sum Performance, n=10'000}
+
+\includegraphics[scale=0.3]{candidate-graphs/cilk_by_threads_10000.jpg}
+
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\caption{Cilk: Prefix Sum Performance, n=20'000}
+
+\includegraphics[scale=0.3]{candidate-graphs/cilk_by_threads_20000.jpg}
+
+\end{figure}
+
+
+\newpage
 \section{MPI: Stencil Operations}
 The stencil operation was first implemented and tested locally using \emph{OpenMPI} 32-Bit, then re-compiled using \emph{NECmpi} 64-Bit on Jupiter. Instead of using \verb=MPI_Send= or \verb=MPI_Recv=, we opted to use the non-blocking \verb=MPI_ISend= and \verb=MPI_IRecv=. The reasoning behind this approach is that the program can compute the local center of the submatrix while waiting for processes to exchange data concerning the external ring, leading to more efficient use of the CPU and idle times.
 
@@ -309,7 +356,7 @@ To achieve maximum parallellization under this model, we should choose $r$ and $
 
 We can conclude that $T_{StencilMid}$ is not affected by the choice of $r$ and $c$, since $p = rc$, leading to $O(\frac{mn}{p})$. We therefore aim to minimize $T_{Comm}$ to the point of $T_{Comm} \leq T_{StencilMid}$. Determing which distribution (block vs. column) is optimal could not be determined analytically; empirical data is available.
 
-\begin{figure}
+\begin{figure}[H]
 \label{mpi_stencil_code}
 \caption{Stencil Operation in MPI}
 \begin{lstlisting}
@@ -362,6 +409,8 @@ We can conclude that $T_{StencilMid}$ is not affected by the choice of $r$ and $
 \end{lstlisting}
 \end{figure}
 
+
+\newpage
 \section{MPI: Prefix Sums}
 The algorithm was implemented using the \verb=MPI_Sendrecv= to realize the \emph{Hillis-Steele} algorithm with communication.The implemented algorithm differs from MPI's standard algorithm in that MPI's version allows for further consideration of nodes / ranks with regard to influencing factors such as locality, which the presented algorithm does not take into account.
 
@@ -383,7 +432,7 @@ T_{ops} = O\left(\frac{n}{p}\right)
 
 Observations reveal that a speed-up of XYZ relative to sequential reference implementation of the prefix sum algorithm was achieved (see empirical data).
 
-\begin{figure}
+\begin{figure}[H]
 \label{mpi_prefix_code}
 \caption{Prefix sum in MPI}
 \begin{lstlisting}
@@ -418,7 +467,7 @@ static void dist_sum(int rank, int p, ATYPE b, ATYPE* prefix)
 
 \end{figure}
 
-
+\newpage
 \section{MPI: Matrix / Vector Multiplication}
 Both the \verb=MPI_Allgather= and \verb=MPI_Reduce_scatter= algorithms were used alongside a regular sequential reference implementation to calculate speedup relations. Testing was done using already existing infrastructure from previous projects. The implementation makes no restrictions on the dimensions; specifically, the generated matrix does not need to be square for the algorithm to work. However, the program does require that both matrix dimensions are divisible by $p$ (if not, error message is given).
 
