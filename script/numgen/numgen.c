@@ -33,10 +33,16 @@ int main(int argc, char* argv[])
 	}
 
 	filter = 0;
+#ifdef LESSPRIMES
+	every_nth = 100;
+#else
 	every_nth = 1;
+#endif
 
 	genpow2(lower, upper);
-	genprime(lower, upper, 50 * every_nth); // every 50th prime
+#ifndef NOPRIMES
+	genprime(lower, upper, every_nth); // every 50th prime
+#endif
 	gendecimeres(lower, upper);
 
 	return 0;
@@ -57,6 +63,7 @@ static void genpow2(int lower, int upper)
 static void genprime(int lower, int upper, int nth)
 {
 	int c = 0;
+	int rrr = 0;
 
 	int* sieve = xmalloc((upper+1) * sizeof(int));
 	memset(sieve, 0, (upper+1) * sizeof(int));
@@ -69,9 +76,14 @@ static void genprime(int lower, int upper, int nth)
 
 		if (i >= lower)
 		{
-			if (c++ > 50) return;
+			if ((rrr % nth) == 0)
+			{
+				if (c++ > 50) return;
 
-			output(i); // emit prime
+				output(i); // emit prime
+			}
+
+			rrr++;
 		}
 
 		for (int j = i; j <= upper; j += i)
@@ -85,7 +97,7 @@ static void genprime(int lower, int upper, int nth)
 
 static void gendecimeres(int lower, int upper)
 {
-	int base = 1;
+	int base = 100;
 	while (base < upper)
 	{
 		for (int i = 1; i < 9; i++)
