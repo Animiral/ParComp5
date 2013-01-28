@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
 	}
 	else
 	{
-		print_perf_debug(n, t, plus_ops, acc_ops, dtime);
+		print_perf(n, t, plus_ops, acc_ops, dtime);
 	}
 
 	free(data);
