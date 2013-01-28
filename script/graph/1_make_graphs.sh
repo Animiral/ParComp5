@@ -80,48 +80,42 @@ mkdir -p graphs
 
 ### CILK ###
 
-numgen_t='./script/numgen/numgen 1 512'          # thread count
+# numgen_t='./script/numgen/numgen 1 512'          # thread count
 
-cilkFile=$(ls ./result/ | grep -E *cilk\-prefix\-sums.csv)
+# cilkFile=$(ls ./result/ | grep -E *cilk\-prefix\-sums.csv)
 
-for n in 20000 10000 500
-do
-	./script/graph/cilk_by_threads.sh "./result/$cilkFile" "$n" "$target/cilk_by_threads_$n.jpg"
+# for n in 20000 10000 500
+# do
+# 	./script/graph/cilk_by_threads.sh "./result/$cilkFile" "$n" "$target/cilk_by_threads_$n.jpg"
 
-done
+# done
 
 
 ## MPI Project 1 ###
-numgen_m='./script/numgen/numgen 1 3000'      # input rows
-numgen_n='./script/numgen/numgen 1 3000'      # input columns
-numgen_c='./script/numgen/numgen 1 3000'      # nr of block columns
-numgen_t='./script/numgen/numgen 1 128'       # thread count
+# numgen_n='./script/numgen/numgen2 1 512'      # input rows/columns
+# numgen_c='./script/numgen/numgen2 1 512'      # nr of block columns
+# numgen_t='./script/numgen/numgen2 1 128'       # thread count
 
-mpi1File=$(ls ./result/ | grep -E *mpi\-p1\-stencil.csv)
+# mpi1File=$(ls ./result/ | grep -E *mpi\-p1\-stencil.csv)
 
-for t in $($numgen_t)
-do
+# for t in 16 128
+# do
 
-	./script/graph/mpi_p1_vary_total_size.sh "./result/$mpi1File" "$t" "$target/mpi_p1_vary_size_$t.jpg"
+# 	# ./script/graph/mpi_p1_vary_total_size.sh "./result/$mpi1File" "$t" "$target/mpi_p1_vary_size_$t.jpg"
 
-	for m in $($numgen_m)
-	do
+# 	for n in 16 512
+# 	do
 
-	for n in $($numgen_n)
-	do
+# 		./script/graph/mpi_p1_vary_process_distribution.sh "./result/$mpi1File" "$n" "$n" "$t" "$target/mpi_p1_vary_process_$n-$t.jpg"
 
-		./script/graph/mpi_p1_vary_process_distribution.sh "./result/$mpi1File" "$m" "$n" "$t" "$target/mpi_p1_vary_process_$m_$n_$t.jpg"
+# 	done
 
-	done
-
-	done
-
-done
+# done
 
 
 
 ### MPI Project 2 ###
-mpi2File=$(ls ./result/ | grep -E *mpi\-p2\-prefix\-sums\.csv)
+mpi2File="mpi_p2_speedup.csv"
 
 ./script/graph/mpi_p2.sh "./result/$mpi2File" "$target/mpi_p2-prefix-sums.jpg"
 
@@ -129,19 +123,12 @@ mpi2File=$(ls ./result/ | grep -E *mpi\-p2\-prefix\-sums\.csv)
 
 ### MPI Project 3 ###
 
-numgen_m='./script/numgen/numgen 1 3000'      # result size
-numgen_n='./script/numgen/numgen 1 3000'      # vector size
-numgen_t='./script/numgen/numgen 1 128'          # thread count
+numgen_n='./script/numgen/numgen2 1 3000'      # vector size
 
 mpi3aFile=$(ls ./result/ | grep -E *mpi\-p3\-allgather.csv)
 mpi3bFile=$(ls ./result/ | grep -E *mpi\-p3\-reduce\-scatter.csv)
 
-        for m in $($numgen_m)
-        do
-
         for n in $($numgen_n)
         do
-        	./script/graph/mpi_p3.sh "./result/$mpi3aFile" "./result/$mpi3bFile" "$m" "$n" "$target/mpi_p3_$m_$n.jpg"
-        done
-
+        	./script/graph/mpi_p3.sh "./result/$mpi3aFile" "./result/$mpi3bFile" "$n" "$n" "$target/mpi_p3_$n.jpg"
         done

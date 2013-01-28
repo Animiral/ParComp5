@@ -12,5 +12,5 @@ if (length(filtered$r) < 1) {
 }
 
 jpeg(args[5], width=1024, height=1024)
-plot(filtered$dtime, filtered$r, type="o", xlab="R", ylab="Time", col="blue")
+plot(filtered$r, filtered$dtime, type="o", xlab="R", ylab="Time", col="blue", lwd=15)
 dev.off()

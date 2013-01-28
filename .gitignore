@@ -3,6 +3,5 @@
 *swf
 *log
 result/
-*.jpg
 *.o
 .DS_Store
