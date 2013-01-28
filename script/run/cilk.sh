@@ -21,7 +21,7 @@ fi
 
 mkdir -p $RESULT_DIR
 
-numgen_n='./script/numgen/numgen 1 250000000'       # input size
+numgen_n='./script/numgen/numgen 1 250000'       # input size
 numgen_c='./script/numgen/numgen 1 30000'          # chunk size
 numgen_t='./script/numgen/numgen 1 2048'          # thread count
 

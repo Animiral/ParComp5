@@ -5,15 +5,16 @@ iterative <- read.csv(args[2], header = FALSE, sep=";")
 hillis <- read.csv(args[3], header = FALSE, sep=";")
 total <- read.csv(args[4], header = FALSE, sep=";")
 
-names(recursive) <- c('length', 'threads', 'ops', 'time')
-names(iterative) <- c('length', 'threads', 'ops', 'time')
-names(hillis) <- c('length', 'threads', 'ops', 'time')
-names(total) <- c('length', 'threads', 'ops', 'time')
 
-f_rec <- subset(recursive, length == args[5])
-f_ite <- subset(iterative, length == args[5])
-f_hil <- subset(hillis, length == args[5])
-f_tot <- subset(total, length == args[5])
+names(recursive) <- c('length', 'threads', 'ops', 'ops2', 'time')
+names(iterative) <- c('length', 'threads', 'ops', 'ops2', 'time')
+names(hillis) <- c('length', 'threads', 'ops', 'ops2', 'time')
+names(total) <- c('length', 'threads', 'ops', 'ops2', 'time')
+
+f_rec <- subset(recursive, length == args[5] & threads <= 512)
+f_ite <- subset(iterative, length == args[5] & threads <= 512)
+f_hil <- subset(hillis, length == args[5] & threads <= 512)
+f_tot <- subset(total, length == args[5] & threads <= 512)
 
 if (length(f_rec) < 1) {
 	q()

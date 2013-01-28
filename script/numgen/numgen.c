@@ -21,6 +21,7 @@ int main(int argc, char* argv[])
 	int debug_flag;
 	int lower; // inclusive lower boundary for generated numbers
 	int upper; // inclusive upper boundary for generated numbers
+	int nth;
 
 	if (0 != parse_args(argc, argv, &debug_flag, "lower boundary", &lower, "upper boundary", &upper, NULL, NULL, NULL, NULL))
 	{
@@ -113,10 +114,10 @@ static void gendecimeres(int lower, int upper)
 
 static void output(int number)
 {
-	if ((filter % every_nth) == 0)
-	{
+//	if ((filter % every_nth) == 0)
+//	{
 		printf("%d ", number);
-	}
+//	}
 	filter++;
 }
 

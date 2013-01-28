@@ -21,7 +21,7 @@ fi
 
 mkdir -p $RESULT_DIR
 
-numgen_n='./script/numgen/numgen 1 250000000'   # input size
+numgen_n='./script/numgen/numgen 1 250000'        # input size
 numgen_t='./script/numgen/numgen 1 2048'          # thread count
 
 for x in $EXES
@@ -45,3 +45,4 @@ do
 done
 
 echo "[$SELF] DONE"
+

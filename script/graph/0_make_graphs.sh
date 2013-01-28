@@ -14,12 +14,13 @@ mkdir -p graphs
 
 
 ### OMP P1 ###
-numgen_n='./script/numgen/numgen 1 250000000'       # input size
+numgen_n='./script/numgen/numgen 1 250000'       # input size
 numgen_t='./script/numgen/numgen 1 2048'            # thread count
 recFile=$(ls ./result/ | grep -E *omp\-p1\-recursive.csv)
 iteFile=$(ls ./result/ | grep -E *omp\-p1\-iterative.csv)
 hilFile=$(ls ./result/ | grep -E *omp\-p1\-hillis\-steele.csv)
 totFile=$(ls ./result/ | grep -E *omp\-p1\-totalsum.csv)
+refFile=$(ls ./result/ | grep -E *reference\-prefix.csv)
 
 for n in $($numgen_n)
 do
@@ -28,6 +29,7 @@ do
 ./script/graph/omp_p1_thread_time.sh "./result/$iteFile" "$n" "./$target/omp_p1_iterative_thread_$n.jpg"
 ./script/graph/omp_p1_thread_time.sh "./result/$hilFile" "$n" "./$target/omp_p1_hillis_thread_$n.jpg"
 ./script/graph/omp_p1_thread_time.sh "./result/$totFile" "$n" "./$target/omp_p1_total_thread_$n.jpg"
+./script/graph/omp_p1_thread_time.sh "./result/$refFile" "$n" "./$target/omp_p1_reference_$n.jpg"
 
 ./script/graph/omp_p1_compare.sh "./result/$recFile" "./result/$iteFile" "./result/$hilFile" "./result/$totFile" "$n" "./$target/omp_p1_compare_$n.jpg"
 
